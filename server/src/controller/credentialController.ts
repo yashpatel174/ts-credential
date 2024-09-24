@@ -3,7 +3,6 @@ import { Request, Response } from "express";
 import bcrypt from "bcrypt";
 import JWT from "jsonwebtoken";
 import nodemailer, { Transporter } from "nodemailer";
-import { promisify } from "util";
 import dotenv from "dotenv";
 
 dotenv.config();
@@ -19,7 +18,9 @@ interface User {
 }
 
 interface CustomRequest extends Request {
-  user: User;
+  user: {
+    email: string;
+  };
 }
 
 interface DecodedToken {
@@ -74,10 +75,15 @@ const login = async (req: Request<{}, {}, UserTypes>, res: Response): Promise<Re
 
 const dashboard = async (req: CustomRequest, res: Response): Promise<Response> => {
   try {
-    const { user } = req;
+    if (!req.user || Object.keys(req.user).length === 0) {
+      return res.status(400).send({ message: "Error while getting user" });
+    }
+    const user = req.user;
     return res.send({ message: "Welcome to the dashboard!", email: user.email });
   } catch (error) {
-    return res.status(500).send({ message: "Error while fetching data, try again!", error: (error as Error).message });
+    return res.status(500).send({
+      error: (error as Error).message,
+    });
   }
 };
 
@@ -182,7 +188,7 @@ const resetPassword = async (req: Request, res: Response): Promise<Response> => 
 
     return res.status(200).send({ message: "Password has been reset successfully." });
   } catch (error) {
-    return res.status(401).send({ message: "Invalid or expired token." });
+    return res.status(401).send({ message: "Invalid or expired token.", error: (error as Error).message });
   }
 };
 

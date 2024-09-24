@@ -48,11 +48,16 @@ const login = async (req, res) => {
 };
 const dashboard = async (req, res) => {
     try {
-        const { user } = req;
+        if (!req.user || Object.keys(req.user).length === 0) {
+            return res.status(400).send({ message: "Error while getting user" });
+        }
+        const user = req.user;
         return res.send({ message: "Welcome to the dashboard!", email: user.email });
     }
     catch (error) {
-        return res.status(500).send({ message: "Error while fetching data, try again!", error: error.message });
+        return res.status(500).send({
+            error: error.message,
+        });
     }
 };
 const logout = async (req, res) => {
@@ -147,7 +152,7 @@ const resetPassword = async (req, res) => {
         return res.status(200).send({ message: "Password has been reset successfully." });
     }
     catch (error) {
-        return res.status(401).send({ message: "Invalid or expired token." });
+        return res.status(401).send({ message: "Invalid or expired token.", error: error.message });
     }
 };
 export { register, login, dashboard, logout, requestPasswordReset, resetPassword };
