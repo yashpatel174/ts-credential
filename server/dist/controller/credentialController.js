@@ -3,6 +3,7 @@ import bcrypt from "bcrypt";
 import JWT from "jsonwebtoken";
 import nodemailer from "nodemailer";
 import dotenv from "dotenv";
+import { required, response } from "../utils/utils.js";
 dotenv.config();
 const smtpHost = process.env.SMTP_HOST;
 const smtpPort = parseInt(process.env.SMTP_PORT, 10);
@@ -12,14 +13,13 @@ const smtpPass = process.env.PASSWORD;
 const register = async (req, res) => {
     try {
         const { email, password } = req.body;
-        if (!email || !password)
-            return res.send({ message: "Emaill & Password are required" });
+        required(res, { email }, { password });
         const existingUser = await credentialSchema.findOne({ email });
         if (existingUser)
-            return res.send({ message: "This email is already registered!" });
+            return response(res, "This email is already registered!");
         const user = new credentialSchema({ email, password });
         await user.save();
-        return res.status(200).send({ message: "Email registered successfully" });
+        return response(res, "Email registered successfully!", 200, user);
     }
     catch (error) {
         return res.status(500).send({ message: "Error while registering email.", error: error.message });
@@ -28,19 +28,18 @@ const register = async (req, res) => {
 const login = async (req, res) => {
     try {
         const { email, password } = req.body;
-        if (!email || !password)
-            return res.send({ message: "Emaill & Password are required" });
+        required(res, { email }, { password });
         const existingUser = await credentialSchema.findOne({ email });
         if (!existingUser)
-            return res.send({ message: "This email is not registered!" });
+            return response(res, "User not registered by this email");
         const isMatch = await bcrypt.compare(password, existingUser.password);
-        if (!isMatch) {
-            return res.send({ messgae: "Invalid username or password." });
-        }
+        if (!isMatch)
+            return response(res, "Incorrect password.");
         const token = JWT.sign({ _id: existingUser._id }, process.env.SECRET_KEY, {
             expiresIn: process.env.EXPIRE,
         });
-        return res.send({ message: "User logged in successfully!", token: token });
+        req.session.token = token;
+        return response(res, "User logged in successfully!", 200, token);
     }
     catch (error) {
         return res.status(500).send({ message: "Error while Logging in the user.", error: error.message });
@@ -49,10 +48,10 @@ const login = async (req, res) => {
 const dashboard = async (req, res) => {
     try {
         if (!req.user || Object.keys(req.user).length === 0) {
-            return res.status(400).send({ message: "Error while getting user" });
+            return response(res, "Error while getting user!", 400);
         }
         const user = req.user;
-        return res.send({ message: "Welcome to the dashboard!", email: user.email });
+        return response(res, "Welcome to the dashboard!", 200, user.email);
     }
     catch (error) {
         return res.status(500).send({
@@ -65,13 +64,13 @@ const logout = async (req, res) => {
         await new Promise((resolve, reject) => {
             req.session.destroy((err) => {
                 if (err) {
-                    return reject(new Error("Error while logging out!"));
+                    return response(res, "Error while logging out!");
                 }
                 resolve();
             });
         });
         res.clearCookie("connect.sid");
-        return res.send({ message: "Logged out successfully!" });
+        return response(res, "Logged out successfully!");
     }
     catch (error) {
         return res.status(500).send({
@@ -92,11 +91,10 @@ let transporter = nodemailer.createTransport({
 const requestPasswordReset = async (req, res) => {
     try {
         const { email } = req.body;
-        if (!email)
-            return res.send({ message: "Email is required!" });
+        required(res, { email });
         const user = await credentialSchema.findOne({ email });
         if (!user)
-            return res.send({ message: "This email is not registerd!" });
+            return response(res, "This email is not registered!");
         const token = JWT.sign({ _id: user._id }, process.env.SECRET_KEY, { expiresIn: "2m" });
         const resetLink = `http://localhost:3000/reset-password/${token}`;
         await credentialSchema.findOneAndUpdate({ email }, {
@@ -111,7 +109,7 @@ const requestPasswordReset = async (req, res) => {
             subject: "Password Reset",
             text: `Click on the following link to reset your password: ${resetLink}`,
         });
-        return res.send({ message: "Link has been sent successfully!", token: token });
+        return response(res, "Link has been sent successfully!", 200, token);
     }
     catch (error) {
         return res.status(500).send({
@@ -123,14 +121,14 @@ const requestPasswordReset = async (req, res) => {
 const resetPassword = async (req, res) => {
     try {
         const token = req.params.token;
-        const { newPassword, confirmPassword } = req.body;
-        if (!newPassword)
-            return res.status(400).send({ message: "Password is required." });
+        const { password, confirmPassword } = req.body;
+        if (!password)
+            return response(res, "Password is required!.", 400);
         if (!confirmPassword)
-            return res.status(400).send({ message: "Confirm password is required." });
+            return response(res, "Confirm password is required!.", 400);
         const secretKey = process.env.SECRET_KEY;
         if (!secretKey) {
-            return res.status(500).send({ message: "Server configuration error." });
+            return response(res, "Server configuration error.", 500);
         }
         const decoded = await new Promise((resolve, reject) => {
             JWT.verify(token, secretKey, (err, decoded) => {
@@ -141,15 +139,15 @@ const resetPassword = async (req, res) => {
             });
         });
         if (!decoded)
-            return res.status(401).send({ message: "Invalid token or token not found." });
+            return response(res, "Invalid token or token not found!");
         const user = await credentialSchema.findById(decoded._id);
         if (!user)
-            return res.status(404).send({ message: "This email is not registered!" });
-        if (newPassword !== confirmPassword)
-            return res.status(400).send({ message: "Passwords do not match." });
-        user.password = newPassword;
+            return response(res, "This email is not registered!", 404);
+        if (password !== confirmPassword)
+            return response(res, "Passwords do not match.", 400);
+        user.password = password;
         await user.save();
-        return res.status(200).send({ message: "Password has been reset successfully." });
+        return response(res, "Password has been reset successfully.");
     }
     catch (error) {
         return res.status(401).send({ message: "Invalid or expired token.", error: error.message });

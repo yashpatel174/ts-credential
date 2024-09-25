@@ -1,9 +1,9 @@
 import axios from "axios";
-import React, { useState, ChangeEvent, FormEvent } from "react";
+import { FC, useState, FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 
-const Register: React.FC = () => {
+const Register: FC = () => {
   const [email, setEmail] = useState<string>("");
   const [password, setPassword] = useState<string>("");
   const navigate = useNavigate();
@@ -31,13 +31,19 @@ const Register: React.FC = () => {
 
     try {
       const response = await axios.post("http://localhost:8080/user/register", { email, password });
-      toast.success(response.data.message.message);
-      navigate("/login");
+
+      if (response.data) {
+        toast.success(response.data.message);
+        navigate("/login");
+      } else {
+        toast.error(response.data.message || "An error occurred!");
+      }
     } catch (error: any) {
       if (error.response) {
-        toast.error(error.response.data.message);
+        const errorMessage: string = error.response.data.message || "An error occurred!";
+        toast.error(errorMessage);
       } else {
-        toast.error("Server error. Please try again later.");
+        toast.error("Something went wrong. Please try again!");
       }
     }
   };

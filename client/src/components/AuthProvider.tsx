@@ -1,4 +1,4 @@
-import React, { useState, createContext, ReactNode } from "react";
+import { FC, useState, createContext, ReactNode } from "react";
 import { toast } from "react-toastify";
 
 interface AuthContextType {
@@ -13,7 +13,7 @@ interface AuthProviderProps {
   children: ReactNode;
 }
 
-const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
+const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
   const [auth, setAuth] = useState<{ token: string } | null>(() => {
     return sessionStorage.getItem("token") ? { token: sessionStorage.getItem("token")! } : null;
   });

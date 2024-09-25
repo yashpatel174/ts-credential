@@ -1,6 +1,6 @@
-import React from "react";
+import { FC } from "react";
 
-const HomePage: React.FC = () => {
+const HomePage: FC = () => {
   return (
     <div className="d-flex justify-content-center align-items-center min-vh-100">
       <div

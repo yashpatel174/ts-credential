@@ -1,10 +1,10 @@
-import React, { useContext, useState, FormEvent } from "react";
+import { FC, useContext, useState, FormEvent } from "react";
 import axios from "axios";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { AuthContext } from "./AuthProvider";
 
-const Login: React.FC = () => {
+const Login: FC = () => {
   const [email, setEmail] = useState<string>("");
   const [password, setPassword] = useState<string>("");
   const navigate = useNavigate();
@@ -40,8 +40,8 @@ const Login: React.FC = () => {
     try {
       const response = await axios.post("http://localhost:8080/user/login", { email, password });
 
-      if (response.data && response.data.token) {
-        const token: string = response.data.token;
+      if (response.data && response.data.result) {
+        const token: string = response.data.result;
         localStorage.setItem("token", token);
         login(token);
         toast.success(response.data.message);
@@ -72,7 +72,7 @@ const Login: React.FC = () => {
       if (response.data && response.data.message) {
         toast.success(response.data.message);
       } else {
-        toast.error("An error occurred while sending the reset email.");
+        toast.error("An error occurred while logging in.");
       }
     } catch (error: any) {
       if (error.response && error.response.data) {

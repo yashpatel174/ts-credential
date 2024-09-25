@@ -4,8 +4,15 @@ import bcrypt from "bcrypt";
 import JWT from "jsonwebtoken";
 import nodemailer, { Transporter } from "nodemailer";
 import dotenv from "dotenv";
+import { required, response } from "../utils/utils.js";
 
 dotenv.config();
+
+declare module "express-session" {
+  interface SessionData {
+    token: string;
+  }
+}
 
 interface UserTypes {
   email: string;
@@ -23,10 +30,6 @@ interface CustomRequest extends Request {
   };
 }
 
-interface DecodedToken {
-  _id: string;
-}
-
 const smtpHost: string = process.env.SMTP_HOST as string;
 const smtpPort: number = parseInt(process.env.SMTP_PORT as string, 10);
 const smtpSecure: boolean = process.env.SMTP_SECURE === "true";
@@ -36,15 +39,15 @@ const smtpPass: string = process.env.PASSWORD as string;
 const register = async (req: Request<{}, {}, UserTypes>, res: Response): Promise<Response> => {
   try {
     const { email, password } = req.body;
-    if (!email || !password) return res.send({ message: "Emaill & Password are required" });
+    required(res, { email }, { password });
 
     const existingUser = await credentialSchema.findOne({ email });
-    if (existingUser) return res.send({ message: "This email is already registered!" });
+    if (existingUser) return response(res, "This email is already registered!");
 
     const user = new credentialSchema({ email, password });
     await user.save();
 
-    return res.status(200).send({ message: "Email registered successfully" });
+    return response(res, "Email registered successfully!", 200, user);
   } catch (error) {
     return res.status(500).send({ message: "Error while registering email.", error: (error as Error).message });
   }
@@ -53,21 +56,21 @@ const register = async (req: Request<{}, {}, UserTypes>, res: Response): Promise
 const login = async (req: Request<{}, {}, UserTypes>, res: Response): Promise<Response> => {
   try {
     const { email, password } = req.body;
-    if (!email || !password) return res.send({ message: "Emaill & Password are required" });
+    required(res, { email }, { password });
 
     const existingUser = await credentialSchema.findOne({ email });
-    if (!existingUser) return res.send({ message: "This email is not registered!" });
+    if (!existingUser) return response(res, "User not registered by this email");
 
     const isMatch = await bcrypt.compare(password, existingUser.password);
-    if (!isMatch) {
-      return res.send({ messgae: "Invalid username or password." });
-    }
+    if (!isMatch) return response(res, "Incorrect password.");
 
     const token = JWT.sign({ _id: existingUser._id }, process.env.SECRET_KEY as string, {
       expiresIn: process.env.EXPIRE,
     });
 
-    return res.send({ message: "User logged in successfully!", token: token });
+    req.session.token = token;
+
+    return response(res, "User logged in successfully!", 200, token);
   } catch (error) {
     return res.status(500).send({ message: "Error while Logging in the user.", error: (error as Error).message });
   }
@@ -76,10 +79,10 @@ const login = async (req: Request<{}, {}, UserTypes>, res: Response): Promise<Re
 const dashboard = async (req: CustomRequest, res: Response): Promise<Response> => {
   try {
     if (!req.user || Object.keys(req.user).length === 0) {
-      return res.status(400).send({ message: "Error while getting user" });
+      return response(res, "Error while getting user!", 400);
     }
     const user = req.user;
-    return res.send({ message: "Welcome to the dashboard!", email: user.email });
+    return response(res, "Welcome to the dashboard!", 200, user.email);
   } catch (error) {
     return res.status(500).send({
       error: (error as Error).message,
@@ -92,7 +95,7 @@ const logout = async (req: Request, res: Response): Promise<Response> => {
     await new Promise<void>((resolve, reject) => {
       req.session.destroy((err) => {
         if (err) {
-          return reject(new Error("Error while logging out!"));
+          return response(res, "Error while logging out!");
         }
         resolve();
       });
@@ -100,7 +103,7 @@ const logout = async (req: Request, res: Response): Promise<Response> => {
 
     res.clearCookie("connect.sid");
 
-    return res.send({ message: "Logged out successfully!" });
+    return response(res, "Logged out successfully!");
   } catch (error) {
     return res.status(500).send({
       message: "An error occurred during logout.",
@@ -122,10 +125,10 @@ let transporter: Transporter = nodemailer.createTransport({
 const requestPasswordReset = async (req: Request<User>, res: Response): Promise<Response> => {
   try {
     const { email } = req.body;
-    if (!email) return res.send({ message: "Email is required!" });
+    required(res, { email });
 
     const user = await credentialSchema.findOne({ email });
-    if (!user) return res.send({ message: "This email is not registerd!" });
+    if (!user) return response(res, "This email is not registered!");
 
     const token = JWT.sign({ _id: user._id }, process.env.SECRET_KEY as string, { expiresIn: "2m" });
     const resetLink = `http://localhost:3000/reset-password/${token}`;
@@ -146,7 +149,7 @@ const requestPasswordReset = async (req: Request<User>, res: Response): Promise<
       subject: "Password Reset",
       text: `Click on the following link to reset your password: ${resetLink}`,
     });
-    return res.send({ message: "Link has been sent successfully!", token: token });
+    return response(res, "Link has been sent successfully!", 200, token);
   } catch (error) {
     return res.status(500).send({
       messaeg: "error while sending mail!",
@@ -158,14 +161,14 @@ const requestPasswordReset = async (req: Request<User>, res: Response): Promise<
 const resetPassword = async (req: Request, res: Response): Promise<Response> => {
   try {
     const token: string = req.params.token;
-    const { newPassword, confirmPassword }: { newPassword?: string; confirmPassword?: string } = req.body;
+    const { password, confirmPassword }: { password?: string; confirmPassword?: string } = req.body;
 
-    if (!newPassword) return res.status(400).send({ message: "Password is required." });
-    if (!confirmPassword) return res.status(400).send({ message: "Confirm password is required." });
+    if (!password) return response(res, "Password is required!.", 400);
+    if (!confirmPassword) return response(res, "Confirm password is required!.", 400);
 
     const secretKey = process.env.SECRET_KEY;
     if (!secretKey) {
-      return res.status(500).send({ message: "Server configuration error." });
+      return response(res, "Server configuration error.", 500);
     }
 
     const decoded = await new Promise<{ _id: string }>((resolve, reject) => {
@@ -176,17 +179,17 @@ const resetPassword = async (req: Request, res: Response): Promise<Response> => 
         resolve(decoded as { _id: string });
       });
     });
-    if (!decoded) return res.status(401).send({ message: "Invalid token or token not found." });
+    if (!decoded) return response(res, "Invalid token or token not found!");
 
     const user = await credentialSchema.findById(decoded._id);
-    if (!user) return res.status(404).send({ message: "This email is not registered!" });
+    if (!user) return response(res, "This email is not registered!", 404);
 
-    if (newPassword !== confirmPassword) return res.status(400).send({ message: "Passwords do not match." });
+    if (password !== confirmPassword) return response(res, "Passwords do not match.", 400);
 
-    user.password = newPassword;
+    user.password = password;
     await user.save();
 
-    return res.status(200).send({ message: "Password has been reset successfully." });
+    return response(res, "Password has been reset successfully.");
   } catch (error) {
     return res.status(401).send({ message: "Invalid or expired token.", error: (error as Error).message });
   }

@@ -1,4 +1,4 @@
-import React, { useContext, FC } from "react";
+import { useContext, FC } from "react";
 import { Navigate } from "react-router-dom";
 import { AuthContext } from "./AuthProvider";
 

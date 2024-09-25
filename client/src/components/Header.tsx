@@ -1,11 +1,19 @@
 import React, { useContext, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { FaBars } from "react-icons/fa";
+import { AuthContext } from "./AuthProvider";
 
 const Header: React.FC = () => {
   const [isNavOpen, setNavOpen] = useState<boolean>(false);
   const navigate = useNavigate();
   const location = useLocation();
+
+  const authContext = useContext(AuthContext);
+  if (!authContext) {
+    throw new Error("Error while logging out.");
+  }
+
+  const { logout } = authContext;
 
   const login = location.pathname === "/login";
   const register = location.pathname === "/register";
@@ -13,6 +21,7 @@ const Header: React.FC = () => {
 
   const handleLogout = () => {
     localStorage.removeItem("token");
+    logout();
     navigate("/login");
   };
 
@@ -106,64 +115,72 @@ const Header: React.FC = () => {
       </header>
 
       {/* Mobile Navigation Menu */}
-      {isNavOpen && (
-        <div className="d-md-none bg-black text-white w-100">
-          <div className="py-2 text-center">
-            {homePage ? (
-              <>
-                <Link
-                  to="/login"
-                  className="text-white text-decoration-none py-2"
-                  onClick={() => setNavOpen(false)}
-                >
-                  Login
-                </Link>
-                <Link
-                  to="/register"
-                  className="text-white text-decoration-none py-2"
-                  onClick={() => setNavOpen(false)}
-                >
-                  Register
-                </Link>
-              </>
-            ) : (
-              <>
-                {isLoggedIn ? (
-                  <button
-                    onClick={handleLogout}
-                    className="btn btn-link text-white text-decoration-none py-2"
-                  >
-                    Logout
-                  </button>
-                ) : (
-                  <>
-                    {login && (
-                      <Link
-                        to="/register"
-                        className="text-white text-decoration-none py-2"
-                        onClick={() => setNavOpen(false)}
-                      >
-                        Register
-                      </Link>
-                    )}
-                    {register && (
-                      <Link
-                        to="/login"
-                        className="text-white text-decoration-none py-2"
-                        onClick={() => setNavOpen(false)}
-                      >
-                        Login
-                      </Link>
-                    )}
-                  </>
-                )}
-              </>
-            )}
+      <div className="d-flex justify-content-end">
+        {isNavOpen && (
+          <div className="d-md-none bg-black text-white w-50">
+            <div className="text-center">
+              {homePage ? (
+                <ul className="list-unstyled">
+                  <li>
+                    <Link
+                      to="/login"
+                      className="text-white text-decoration-none"
+                      onClick={() => setNavOpen(false)}
+                    >
+                      Login
+                    </Link>
+                  </li>
+                  <span
+                    className="d-block w-100 bg-white my-2"
+                    style={{ height: "1px" }}
+                  ></span>
+                  <li>
+                    <Link
+                      to="/register"
+                      className="text-white text-decoration-none"
+                      onClick={() => setNavOpen(false)}
+                    >
+                      Register
+                    </Link>
+                  </li>
+                </ul>
+              ) : (
+                <>
+                  {isLoggedIn ? (
+                    <button
+                      onClick={handleLogout}
+                      className="btn btn-link text-white text-decoration-none py-2"
+                    >
+                      Logout
+                    </button>
+                  ) : (
+                    <>
+                      {login && (
+                        <Link
+                          to="/register"
+                          className="text-white text-decoration-none py-2"
+                          onClick={() => setNavOpen(false)}
+                        >
+                          Register
+                        </Link>
+                      )}
+                      {register && (
+                        <Link
+                          to="/login"
+                          className="text-white text-decoration-none py-2"
+                          onClick={() => setNavOpen(false)}
+                        >
+                          Login
+                        </Link>
+                      )}
+                    </>
+                  )}
+                </>
+              )}
+            </div>
           </div>
-        </div>
-      )}
-
-      <div className="gradient-border"></div>
+        )}
+      </div>
     </>
   );
 };

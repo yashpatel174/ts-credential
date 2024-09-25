@@ -1,5 +1,4 @@
-import React, { FC } from "react";
-import "./App.css";
+import { FC } from "react";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import Routing from "./routers/Routing";
