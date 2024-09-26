@@ -109,7 +109,7 @@ const requestPasswordReset = async (req, res) => {
             from: process.env.EMAIL,
             to: email,
             subject: "Password Reset",
-            text: `Click on the following link to reset your password: <br/> ${resetLink}`,
+            text: `Click on the following link to reset your password: ${resetLink}`,
         });
         return response(res, message.link_sent, 200, token);
     }

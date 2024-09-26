@@ -80,7 +80,6 @@ const login = async (req: Request<{}, {}, UserTypes>, res: Response): Promise<Re
 const dashboard = async (req: Request, res: Response): Promise<Response> => {
   try {
     const requ = req as CustomRequest;
-
     if (!requ.user || Object.keys(requ.user).length === 0) {
       return response(res, message.user_error, 400);
     }
@@ -150,7 +149,7 @@ const requestPasswordReset = async (req: Request<User>, res: Response): Promise<
       from: process.env.EMAIL,
       to: email,
       subject: "Password Reset",
-      text: `Click on the following link to reset your password: <br/> ${resetLink}`,
+      text: `Click on the following link to reset your password: ${resetLink}`,
     });
     return response(res, message.link_sent, 200, token);
   } catch (error) {
