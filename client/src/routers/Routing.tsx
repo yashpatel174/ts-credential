@@ -1,5 +1,5 @@
-import React from "react";
-import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
+import React, { useEffect, FC } from "react";
+import { BrowserRouter as Router, Route, Routes, useNavigate } from "react-router-dom";
 import AuthProvider from "../components/AuthProvider";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
@@ -10,11 +10,13 @@ import ResetPassword from "../components/ResetPassword";
 import Dashboard from "../components/Dashboard";
 import NoPage from "../components/NoPage";
 import Private from "../components/Private";
+import ForgotPassword from "../components/ForgotPassword";
 
 const Routing: React.FC = () => {
   return (
     <AuthProvider>
       <Router>
+        <AuthCheck />
         <Header />
         <Routes>
           <Route
@@ -28,6 +30,10 @@ const Routing: React.FC = () => {
           <Route
             path="/register"
             element={<Register />}
+          />
+          <Route
+            path="/forgot-password"
+            element={<ForgotPassword />}
           />
           <Route
             path="/reset-password/:token"
@@ -46,6 +52,20 @@ const Routing: React.FC = () => {
       </Router>
     </AuthProvider>
   );
+};
+
+const AuthCheck: FC = () => {
+  const navigate = useNavigate();
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (token) {
+      navigate("/dashboard");
+    } else {
+      const currentPath = window.location.pathname;
+      navigate(currentPath);
+    }
+  }, [navigate]);
+  return null;
 };
 
 export default Routing;

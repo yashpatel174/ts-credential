@@ -2,9 +2,14 @@ import { useNavigate } from "react-router-dom";
 
 const NoPage = () => {
   const navigate = useNavigate();
+  const token = localStorage.getItem("token");
   const redirect = () => {
     setTimeout(() => {
-      navigate("/login");
+      if (token) {
+        navigate("/dashboard");
+      } else {
+        navigate("/login");
+      }
     }, 2000);
   };
   redirect();

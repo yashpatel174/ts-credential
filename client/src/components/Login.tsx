@@ -59,31 +59,6 @@ const Login: FC = () => {
     }
   };
 
-  const handleForgotPassword = async (e: FormEvent<HTMLButtonElement>) => {
-    e.preventDefault();
-
-    if (!email.trim()) {
-      return toast.error("Enter your email id!");
-    }
-
-    try {
-      const response = await axios.post("http://localhost:8080/user/forgot-password", { email });
-
-      if (response.data && response.data.message) {
-        toast.success(response.data.message);
-      } else {
-        toast.error("An error occurred while logging in.");
-      }
-    } catch (error: any) {
-      if (error.response && error.response.data) {
-        const errorMessage: string = error.response.data.message || "An error occurred!";
-        toast.error(errorMessage);
-      } else {
-        toast.error("Server error. Please try again later.");
-      }
-    }
-  };
-
   return (
     <div className="d-flex justify-content-center align-items-center min-vh-100">
       <div className="container">
@@ -160,14 +135,13 @@ const Login: FC = () => {
                     >
                       Login
                     </button>
-                    <button
-                      type="button"
-                      onClick={handleForgotPassword}
+                    <Link
+                      to="/forgot-password"
                       className="btn btn-warning w-100 bg-black text-white border-2 border-white mt-2 mt-sm-0 ms-sm-2"
                       style={{ fontSize: "1rem" }}
                     >
-                      Reset password
-                    </button>
+                      Forgot password
+                    </Link>
                   </div>
                 </form>
               </div>

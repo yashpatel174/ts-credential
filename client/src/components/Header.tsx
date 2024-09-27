@@ -18,6 +18,7 @@ const Header: React.FC = () => {
   const login = location.pathname === "/login";
   const register = location.pathname === "/register";
   const homePage = location.pathname === "/";
+  const forgot = location.pathname === "/forgot-password";
 
   const handleLogout = () => {
     localStorage.removeItem("token");
@@ -46,7 +47,7 @@ const Header: React.FC = () => {
           </Link>
 
           <div className="d-flex align-items-center">
-            {homePage ? (
+            {homePage || forgot ? (
               <>
                 <Link
                   to="/login"
@@ -119,7 +120,7 @@ const Header: React.FC = () => {
         {isNavOpen && (
           <div className="d-md-none bg-black text-white w-50">
             <div className="text-center">
-              {homePage ? (
+              {homePage || forgot ? (
                 <ul className="list-unstyled">
                   <li>
                     <Link
