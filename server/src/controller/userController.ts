@@ -1,4 +1,4 @@
-import credentialSchema from "../model/credentialModel.js";
+import userSchema from "../model/userModel.js";
 import { Request, Response } from "express";
 import bcrypt from "bcrypt";
 import JWT from "jsonwebtoken";
@@ -21,7 +21,7 @@ interface UserTypes {
   save(): Promise<UserTypes>;
 }
 
-interface User {
+interface User extends Request {
   email: string;
 }
 
@@ -42,10 +42,10 @@ const register = async (req: Request<{}, {}, UserTypes>, res: Response): Promise
     const { email, password } = req.body;
     required(res, { email }, { password });
 
-    const existingUser = await credentialSchema.findOne({ email });
+    const existingUser = await userSchema.findOne({ email });
     if (existingUser) return response(res, message.exist_email);
 
-    const user = new credentialSchema({ email, password });
+    const user = new userSchema({ email, password });
     await user.save();
 
     return response(res, message.email_registered, 200, user);
@@ -59,7 +59,7 @@ const login = async (req: Request<{}, {}, UserTypes>, res: Response): Promise<Re
     const { email, password } = req.body;
     required(res, { email }, { password });
 
-    const existingUser = await credentialSchema.findOne({ email });
+    const existingUser = await userSchema.findOne({ email });
     if (!existingUser) return response(res, message.no_email, 404);
 
     const isMatch = await bcrypt.compare(password, existingUser.password);
@@ -124,18 +124,18 @@ let transporter: Transporter = nodemailer.createTransport({
   },
 });
 
-const requestPasswordReset = async (req: Request<User>, res: Response): Promise<Response> => {
+const requestPasswordReset = async (req: User, res: Response): Promise<Response> => {
   try {
     const { email } = req.body;
     required(res, { email });
 
-    const user = await credentialSchema.findOne({ email });
+    const user = await userSchema.findOne({ email });
     if (!user) return response(res, message.no_email, 404);
 
     const token = JWT.sign({ _id: user._id }, process.env.SECRET_KEY as string, { expiresIn: "2m" });
     const resetLink = `${message.link}${token}`;
 
-    await credentialSchema.findOneAndUpdate(
+    await userSchema.findOneAndUpdate(
       { email },
       {
         $set: {
@@ -163,7 +163,7 @@ const requestPasswordReset = async (req: Request<User>, res: Response): Promise<
 const resetPassword = async (req: Request, res: Response): Promise<Response> => {
   try {
     const token: string = req.params.token;
-    const { password, confirmPassword }: { password?: string; confirmPassword?: string } = req.body;
+    const { password, confirmPassword }: { password: string; confirmPassword: string } = req.body;
 
     if (!password) return response(res, message.password_required, 400);
     if (!confirmPassword) return response(res, message.confirm_password, 400);
@@ -183,7 +183,7 @@ const resetPassword = async (req: Request, res: Response): Promise<Response> => 
     });
     if (!decoded) return response(res, message.no_token);
 
-    const user = await credentialSchema.findById(decoded._id);
+    const user = await userSchema.findById(decoded._id);
     if (!user) return response(res, message.no_email, 404);
 
     if (password !== confirmPassword) return response(res, message.no_match, 400);

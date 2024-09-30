@@ -1,8 +1,9 @@
 import { Request, Response, NextFunction } from "express";
-import credentialModel from "../model/credentialModel.js";
+import userSchema from "../model/userModel.js";
 import JWT from "jsonwebtoken";
 import dotenv from "dotenv";
 import { Session, SessionData } from "express-session";
+import { response } from "utils/utils.js";
 
 dotenv.config();
 
@@ -18,9 +19,14 @@ interface AuthRequest extends Request {
   user: any;
 }
 
+interface Admin extends Request {
+  user: {
+    role: string;
+  };
+}
+
 export const authMiddleware = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    // Cast req to AuthRequest
     const authReq = req as AuthRequest;
 
     const token = authReq.headers.authorization
@@ -30,7 +36,7 @@ export const authMiddleware = async (req: Request, res: Response, next: NextFunc
 
     const decoded: any = JWT.verify(token, process.env.SECRET_KEY as string);
 
-    const user = await credentialModel.findById(decoded._id);
+    const user = await userSchema.findById(decoded._id);
     if (!user) return res.send({ message: "User not found." });
 
     authReq.token = token;
@@ -39,5 +45,18 @@ export const authMiddleware = async (req: Request, res: Response, next: NextFunc
     next();
   } catch (error) {
     return res.status(500).send({ message: "Error while verifying token!" });
+  }
+};
+
+export const isAdmin = async (req: Admin, res: Response, next: NextFunction) => {
+  try {
+    const admin = req.user.role === "admin";
+    if (admin) {
+      return next();
+    } else {
+      return response(res, "Only admin can access this route!");
+    }
+  } catch (error) {
+    return res.status(500).send({ message: "Error while verifying Admin!" });
   }
 };

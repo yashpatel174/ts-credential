@@ -1,9 +1,9 @@
-import React, { useContext, useState } from "react";
+import { FC, useContext, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { FaBars } from "react-icons/fa";
 import { AuthContext } from "./AuthProvider";
 
-const Header: React.FC = () => {
+const Header: FC = () => {
   const [isNavOpen, setNavOpen] = useState<boolean>(false);
   const navigate = useNavigate();
   const location = useLocation();

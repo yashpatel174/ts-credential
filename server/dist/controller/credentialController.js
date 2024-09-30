@@ -1,4 +1,4 @@
-import credentialSchema from "../model/credentialModel.js";
+import userSchema from "../model/userModel.js";
 import bcrypt from "bcrypt";
 import JWT from "jsonwebtoken";
 import nodemailer from "nodemailer";
@@ -15,10 +15,10 @@ const register = async (req, res) => {
     try {
         const { email, password } = req.body;
         required(res, { email }, { password });
-        const existingUser = await credentialSchema.findOne({ email });
+        const existingUser = await userSchema.findOne({ email });
         if (existingUser)
             return response(res, message.exist_email);
-        const user = new credentialSchema({ email, password });
+        const user = new userSchema({ email, password });
         await user.save();
         return response(res, message.email_registered, 200, user);
     }
@@ -30,7 +30,7 @@ const login = async (req, res) => {
     try {
         const { email, password } = req.body;
         required(res, { email }, { password });
-        const existingUser = await credentialSchema.findOne({ email });
+        const existingUser = await userSchema.findOne({ email });
         if (!existingUser)
             return response(res, message.no_email, 404);
         const isMatch = await bcrypt.compare(password, existingUser.password);
@@ -94,12 +94,12 @@ const requestPasswordReset = async (req, res) => {
     try {
         const { email } = req.body;
         required(res, { email });
-        const user = await credentialSchema.findOne({ email });
+        const user = await userSchema.findOne({ email });
         if (!user)
             return response(res, message.no_email, 404);
         const token = JWT.sign({ _id: user._id }, process.env.SECRET_KEY, { expiresIn: "2m" });
         const resetLink = `${message.link}${token}`;
-        await credentialSchema.findOneAndUpdate({ email }, {
+        await userSchema.findOneAndUpdate({ email }, {
             $set: {
                 resetToken: token,
                 resetTokenExpiration: Date.now() + 2 * 60 * 1000,
@@ -142,7 +142,7 @@ const resetPassword = async (req, res) => {
         });
         if (!decoded)
             return response(res, message.no_token);
-        const user = await credentialSchema.findById(decoded._id);
+        const user = await userSchema.findById(decoded._id);
         if (!user)
             return response(res, message.no_email, 404);
         if (password !== confirmPassword)
