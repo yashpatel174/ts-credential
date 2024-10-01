@@ -3,7 +3,7 @@ import userSchema from "../model/userModel.js";
 import JWT from "jsonwebtoken";
 import dotenv from "dotenv";
 import { Session, SessionData } from "express-session";
-import { response } from "utils/utils.js";
+import { response } from "../utils/utils.js";
 
 dotenv.config();
 

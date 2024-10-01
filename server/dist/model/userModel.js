@@ -16,6 +16,17 @@ const userSchema = new Schema({
         required: true,
         unique: true,
     },
+    role: {
+        type: String,
+        enum: ["user", "admin"],
+        default: "user",
+    },
+    groups: [
+        {
+            type: Schema.Types.ObjectId,
+            ref: "Rooms",
+        },
+    ],
     resetToken: String,
     resetTokenExpiration: Date,
 });
@@ -26,4 +37,4 @@ userSchema.pre("save", async function (next) {
     }
     next();
 });
-export default model("Credentials", userSchema);
+export default model("Users", userSchema);

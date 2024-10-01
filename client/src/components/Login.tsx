@@ -5,7 +5,7 @@ import { toast } from "react-toastify";
 import { AuthContext } from "./AuthProvider";
 
 const Login: FC = () => {
-  const [email, setEmail] = useState<string>("");
+  const [userName, setUserName] = useState<string>("");
   const [password, setPassword] = useState<string>("");
   const navigate = useNavigate();
 
@@ -24,21 +24,18 @@ const Login: FC = () => {
       return emailPattern.test(email);
     };
 
-    if (!email.trim() && !password.trim()) {
+    if (!userName.trim() && !password.trim()) {
       return toast.error("Email & password are required!");
     }
-    if (!email.trim()) {
+    if (!userName.trim()) {
       return toast.error("Email is required!");
-    }
-    if (email && !validateEmail(email)) {
-      return toast.error("Invalid email id!");
     }
     if (!password.trim()) {
       return toast.error("Password is required!");
     }
 
     try {
-      const response = await axios.post("http://localhost:8080/user/login", { email, password });
+      const response = await axios.post("http://localhost:8080/user/login", { userName, password });
 
       if (response.data && response.data.result) {
         const token: string = response.data.result;
@@ -81,19 +78,19 @@ const Login: FC = () => {
                 >
                   <div className="mb-3">
                     <label
-                      htmlFor="email"
+                      htmlFor="username"
                       className="form-label text-black"
                       style={{ fontSize: "1rem" }}
                     >
-                      Email
+                      Username
                     </label>
                     <input
                       type="text"
                       className="form-control bg-white text-black"
-                      id="email"
-                      name="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
+                      id="username"
+                      name="username"
+                      value={userName}
+                      onChange={(e) => setUserName(e.target.value)}
                       required
                     />
                   </div>

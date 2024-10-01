@@ -1,12 +1,12 @@
 import { Document, Schema, model } from "mongoose";
 
-interface Irooms extends Document {
-  roomName: string;
+interface IGroups extends Document {
+  groupName: string;
   members: [Schema.Types.ObjectId];
 }
 
-const roomSchema = new Schema<Irooms>({
-  roomName: {
+const groupSchema = new Schema<IGroups>({
+  groupName: {
     type: String,
     required: true,
     unique: true,
@@ -19,4 +19,4 @@ const roomSchema = new Schema<Irooms>({
   ],
 });
 
-export default model<Irooms>("Rooms", roomSchema);
+export default model<IGroups>("Groups", groupSchema);

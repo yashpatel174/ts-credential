@@ -8,7 +8,7 @@ interface Iusers extends Document {
   role: "user" | "admin";
   resetToken: string;
   resetTokenExpiration: string;
-  groups: [String];
+  groups: [Schema.Types.ObjectId];
 }
 
 const userSchema = new Schema<Iusers>({
@@ -32,7 +32,12 @@ const userSchema = new Schema<Iusers>({
     enum: ["user", "admin"],
     default: "user",
   },
-  groups: [String],
+  groups: [
+    {
+      type: Schema.Types.ObjectId,
+      ref: "Rooms",
+    },
+  ],
   resetToken: String,
   resetTokenExpiration: Date,
 });

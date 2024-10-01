@@ -16,6 +16,7 @@ declare module "express-session" {
 }
 
 interface UserTypes {
+  userName: string;
   email: string;
   password: string;
   save(): Promise<UserTypes>;
@@ -27,7 +28,16 @@ interface User extends Request {
 
 interface CustomRequest extends Request {
   user: {
-    email: string;
+    _id: string;
+    userName: string;
+    groups: string;
+  };
+}
+
+interface UserRole extends Request {
+  user: {
+    role: string;
+    _id: string;
   };
 }
 
@@ -39,13 +49,13 @@ const smtpPass: string = process.env.PASSWORD as string;
 
 const register = async (req: Request<{}, {}, UserTypes>, res: Response): Promise<Response> => {
   try {
-    const { email, password } = req.body;
-    required(res, { email }, { password });
+    const { userName, email, password } = req.body;
+    required(res, { userName }, { email }, { password });
 
     const existingUser = await userSchema.findOne({ email });
     if (existingUser) return response(res, message.exist_email);
 
-    const user = new userSchema({ email, password });
+    const user = new userSchema({ userName, email, password });
     await user.save();
 
     return response(res, message.email_registered, 200, user);
@@ -56,10 +66,10 @@ const register = async (req: Request<{}, {}, UserTypes>, res: Response): Promise
 
 const login = async (req: Request<{}, {}, UserTypes>, res: Response): Promise<Response> => {
   try {
-    const { email, password } = req.body;
-    required(res, { email }, { password });
+    const { userName, password } = req.body;
+    required(res, { userName }, { password });
 
-    const existingUser = await userSchema.findOne({ email });
+    const existingUser = await userSchema.findOne({ userName });
     if (!existingUser) return response(res, message.no_email, 404);
 
     const isMatch = await bcrypt.compare(password, existingUser.password);
@@ -84,7 +94,75 @@ const dashboard = async (req: Request, res: Response): Promise<Response> => {
       return response(res, message.user_error, 400);
     }
     const user = requ.user;
-    return response(res, message.dashboard, 200, user.email);
+
+    const users = await userSchema.find({ _id: { $ne: user._id } });
+    if (!users) return response(res, "Users not found!", 404);
+
+    const userList = users?.map((user) => user.userName, user._id);
+
+    const responseData = {
+      currentUser: user.userName,
+      otherUsers: userList,
+    };
+
+    return response(res, message.dashboard, 200, responseData);
+  } catch (error) {
+    return res.status(500).send({
+      error: (error as Error).message,
+    });
+  }
+};
+
+// const userList = async (req: Request, res: Response): Promise<Response> => {
+//   try {
+//     const requ = req as Iuser;
+//     const userId = requ.user._id;
+//     const users = await userSchema.find({ _id: { $ne: userId } });
+
+//     return response(res, "List of users received successfully!", 200, users);
+//   } catch (error) {
+//     return res.status(500).send({
+//       error: (error as Error).message,
+//     });
+//   }
+// };
+
+// const dashboards = async (req: Request, res: Response): Promise<Response> => {
+//   try {
+//     const requ = req as CustomRequest;
+
+//     if (!requ.user || Object.keys(requ.user).length === 0) {
+//       return response(res, message.user_error, 400);
+//     }
+
+//     const currentUser = requ.user;
+//     const users = await userSchema.find({ _id: { $ne: currentUser._id } });
+//     if (!users) return response(res, "Users not found!", 404);
+
+//     const userList = users?.map((user) => user.userName);
+
+//     const responseData = {
+//       currentUser: currentUser.userName,
+//       otherUsers: userList,
+//     };
+
+//     return response(res, "Dashboard and user list received successfully!", 200, responseData);
+//   } catch (error) {
+//     return res.status(500).send({
+//       error: (error as Error).message,
+//     });
+//   }
+// };
+
+//* For admin only
+const userDetails = async (req: UserRole, res: Response): Promise<Response> => {
+  try {
+    const { _id } = req.query;
+
+    const user = await userSchema.findById(_id);
+    if (!user) return response(res, "Erorr while getting user information!", 500);
+
+    return response(res, "User data fetched successfully!", 200, user);
   } catch (error) {
     return res.status(500).send({
       error: (error as Error).message,
@@ -124,9 +202,10 @@ let transporter: Transporter = nodemailer.createTransport({
   },
 });
 
-const requestPasswordReset = async (req: User, res: Response): Promise<Response> => {
+const requestPasswordReset = async (req: Request, res: Response): Promise<Response> => {
   try {
-    const { email } = req.body;
+    const requ = req as User;
+    const { email } = requ.body;
     required(res, { email });
 
     const user = await userSchema.findOne({ email });
@@ -197,4 +276,4 @@ const resetPassword = async (req: Request, res: Response): Promise<Response> => 
   }
 };
 
-export { register, login, dashboard, logout, requestPasswordReset, resetPassword };
+export { register, login, dashboard, userDetails, logout, requestPasswordReset, resetPassword };

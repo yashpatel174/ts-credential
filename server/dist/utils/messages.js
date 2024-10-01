@@ -21,4 +21,7 @@ export const message = {
     no_match: "Passwords do not match.",
     reset_password: "Password has been reset successfully.",
     token_expired: "Invalid or expired token.",
+    //* For the room responses
+    exist_room: "Room is already exist by this name!",
+    room_created: "Room created successfully!",
 };

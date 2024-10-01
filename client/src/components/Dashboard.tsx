@@ -1,44 +1,75 @@
 import { FC, useEffect, useState } from "react";
 import { toast } from "react-toastify";
 import axios from "axios";
+import { Link } from "react-router-dom";
 
 interface DashboardData {
-  result: string;
+  result: {
+    currentUser: {
+      userName: string;
+    };
+    otherUsers: [object];
+  };
 }
 
 const Dashboard: FC = () => {
-  const [data, setData] = useState<string>("");
+  const [userName, setUserName] = useState<string>("");
+  const [users, setUsers] = useState([]);
 
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchUsers = async () => {
       try {
-        const response = await axios.get<DashboardData>("http://localhost:8080/user/dashboard", {
-          headers: {
-            Authorization: `Bearer ${sessionStorage.getItem("token")}`,
-          },
-        });
-
-        setData(response.data.result);
-      } catch (error: any) {
-        if (error.response) {
-          const errorMessage: string = error.response.data.message || "An error occurred!";
-          toast.error(errorMessage);
-        } else {
-          toast.error("Something went wrong. Please try again!");
-        }
+        const response = await axios.get("http://localhost:8080/user/dashboard");
+        setUserName(response.data.result.currentUser);
+        setUsers(response.data.result.otherUsers);
+        // setGroup(response.data.result.group);
+      } catch (error) {
+        console.error("Error fetching users:", error);
       }
     };
 
-    fetchData();
+    fetchUsers();
   }, []);
 
   return (
-    <div className="d-flex justify-content-center align-items-center min-vh-100">
-      <div className="card text-center bg-white shadow">
-        <div className="card-body">
-          <h3 className=" text-white bg-black p-1 border border-primary rounded">Welcome to the dashboard!</h3>
-          <h2 className="text-black">Your email id is</h2>
-          <h1 style={{ color: "#ff803e" }}>{data}</h1>
+    <div className="mx-4">
+      <div className="row">
+        <h1 className="text-center mb-4">{userName}</h1>
+        <div className="col-3">
+          <h1 className="text-center mb-4">Users</h1>
+          <ul className="list-unstyled">
+            {users?.map((user) => (
+              <li
+                // key={user}
+                className="bg-white border rounded shadow-sm mb-3 p-3"
+              >
+                <Link
+                  to={user}
+                  className="mt-2 text-dark"
+                >
+                  {user}
+                </Link>
+              </li>
+            ))}
+          </ul>
+          <hr />
+          <h1 className="text-center mb-4">Groups</h1>
+          {/* <ul className="list-unstyled">
+            {groups
+              ? groups.map((item) => (
+                  <li
+                    key={item.id}
+                    className="bg-white border rounded shadow-sm mb-3 p-3"
+                  >
+                    <div className="mt-2 text-dark">{item}</div>
+                  </li>
+                ))
+              : null}
+          </ul> */}
+        </div>
+        <div className="col-9">
+          <h3>Right Column</h3>
+          <p>This is the right column with 9 parts.</p>
         </div>
       </div>
     </div>

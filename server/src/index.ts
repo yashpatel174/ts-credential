@@ -2,7 +2,7 @@ import express, { Application } from "express";
 import dotenv from "dotenv";
 import mongoose from "mongoose";
 import cors from "cors";
-import route from "./route/route.js";
+import route from "./route/userRoute.js";
 import session from "express-session";
 
 const app: Application = express();

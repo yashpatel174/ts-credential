@@ -4,6 +4,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 
 const Register: FC = () => {
+  const [userName, setUserName] = useState<string>("");
   const [email, setEmail] = useState<string>("");
   const [password, setPassword] = useState<string>("");
   const navigate = useNavigate();
@@ -30,7 +31,7 @@ const Register: FC = () => {
     }
 
     try {
-      const response = await axios.post("http://localhost:8080/user/register", { email, password });
+      const response = await axios.post("http://localhost:8080/user/register", { userName, email, password });
 
       if (response.data) {
         toast.success(response.data.message);
@@ -68,6 +69,24 @@ const Register: FC = () => {
                   onSubmit={handleRegister}
                   noValidate
                 >
+                  <div className="mb-3">
+                    <label
+                      htmlFor="username"
+                      className="form-label text-black"
+                      style={{ fontSize: "1rem" }}
+                    >
+                      Username
+                    </label>
+                    <input
+                      type="text"
+                      className="form-control bg-white text-black"
+                      id="username"
+                      name="username"
+                      value={userName}
+                      onChange={(e) => setUserName(e.target.value)}
+                      required
+                    />
+                  </div>
                   <div className="mb-3">
                     <label
                       htmlFor="email"
