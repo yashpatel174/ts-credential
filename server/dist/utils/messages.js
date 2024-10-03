@@ -1,8 +1,9 @@
 export const message = {
-    exist_email: "This email is already registered!",
+    exist_userName: "This username is already registered!",
     email_registered: "Email registered successfully!",
     error_in_register: "Error while registering email.",
     no_email: "User not registered by this email!",
+    no_username: "User not registered by this username!",
     incorrect_password: "Password is incorrect.",
     login: "User logged in successfully!",
     login_error: "Error while Logging in the user.",

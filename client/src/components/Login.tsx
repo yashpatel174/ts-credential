@@ -39,7 +39,7 @@ const Login: FC = () => {
 
       if (response.data && response.data.result) {
         const token: string = response.data.result;
-        localStorage.setItem("token", token);
+        sessionStorage.setItem("token", token);
         login(token);
         toast.success(response.data.message);
         navigate("/dashboard");
@@ -67,8 +67,8 @@ const Login: FC = () => {
             >
               <div className="card-body">
                 <h1
-                  className="text-center mb-4"
-                  style={{ color: "#000", fontSize: "2rem" }}
+                  className="text-black text-center mb-4"
+                  style={{ fontSize: "2rem" }}
                 >
                   Login
                 </h1>

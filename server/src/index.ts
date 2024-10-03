@@ -2,7 +2,8 @@ import express, { Application } from "express";
 import dotenv from "dotenv";
 import mongoose from "mongoose";
 import cors from "cors";
-import route from "./route/userRoute.js";
+import userRoute from "./route/userRoute.js";
+import chatRoute from "./route/chatRoute.js";
 import session from "express-session";
 
 const app: Application = express();
@@ -26,7 +27,8 @@ app.use(
 );
 
 // *Routes
-app.use("/user", route);
+app.use("/user", userRoute);
+app.use("/chat", chatRoute);
 
 mongoose.connect(process.env.DB as string).then(() => console.log("Database connected successfully!"));
 

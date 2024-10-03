@@ -21,7 +21,7 @@ const Header: FC = () => {
   const forgot = location.pathname === "/forgot-password";
 
   const handleLogout = () => {
-    localStorage.removeItem("token");
+    sessionStorage.removeItem("token");
     logout();
     navigate("/login");
   };
@@ -30,7 +30,7 @@ const Header: FC = () => {
     setNavOpen(!isNavOpen);
   };
 
-  const isLoggedIn = !!localStorage.getItem("token");
+  const isLoggedIn = !!sessionStorage.getItem("token");
 
   return (
     <>

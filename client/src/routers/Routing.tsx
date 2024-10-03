@@ -57,7 +57,7 @@ const Routing: React.FC = () => {
 const AuthCheck: FC = () => {
   const navigate = useNavigate();
   useEffect(() => {
-    const token = localStorage.getItem("token");
+    const token = sessionStorage.getItem("token");
     if (token) {
       navigate("/dashboard");
     } else {

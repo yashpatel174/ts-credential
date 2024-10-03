@@ -52,8 +52,8 @@ const register = async (req: Request<{}, {}, UserTypes>, res: Response): Promise
     const { userName, email, password } = req.body;
     required(res, { userName }, { email }, { password });
 
-    const existingUser = await userSchema.findOne({ email });
-    if (existingUser) return response(res, message.exist_email);
+    const existingUser = await userSchema.findOne({ userName });
+    if (existingUser) return response(res, message.exist_userName);
 
     const user = new userSchema({ userName, email, password });
     await user.save();
@@ -70,7 +70,7 @@ const login = async (req: Request<{}, {}, UserTypes>, res: Response): Promise<Re
     required(res, { userName }, { password });
 
     const existingUser = await userSchema.findOne({ userName });
-    if (!existingUser) return response(res, message.no_email, 404);
+    if (!existingUser) return response(res, message.no_username, 404);
 
     const isMatch = await bcrypt.compare(password, existingUser.password);
     if (!isMatch) return response(res, message.incorrect_password);
@@ -98,10 +98,11 @@ const dashboard = async (req: Request, res: Response): Promise<Response> => {
     const users = await userSchema.find({ _id: { $ne: user._id } });
     if (!users) return response(res, "Users not found!", 404);
 
-    const userList = users?.map((user) => user.userName, user._id);
+    // Returning the user list along with _id for creating a chat room
+    const userList = users?.map((u) => ({ userName: u.userName, userId: u._id }));
 
     const responseData = {
-      currentUser: user.userName,
+      currentUser: { userName: user.userName, userId: user._id },
       otherUsers: userList,
     };
 
@@ -113,48 +114,6 @@ const dashboard = async (req: Request, res: Response): Promise<Response> => {
   }
 };
 
-// const userList = async (req: Request, res: Response): Promise<Response> => {
-//   try {
-//     const requ = req as Iuser;
-//     const userId = requ.user._id;
-//     const users = await userSchema.find({ _id: { $ne: userId } });
-
-//     return response(res, "List of users received successfully!", 200, users);
-//   } catch (error) {
-//     return res.status(500).send({
-//       error: (error as Error).message,
-//     });
-//   }
-// };
-
-// const dashboards = async (req: Request, res: Response): Promise<Response> => {
-//   try {
-//     const requ = req as CustomRequest;
-
-//     if (!requ.user || Object.keys(requ.user).length === 0) {
-//       return response(res, message.user_error, 400);
-//     }
-
-//     const currentUser = requ.user;
-//     const users = await userSchema.find({ _id: { $ne: currentUser._id } });
-//     if (!users) return response(res, "Users not found!", 404);
-
-//     const userList = users?.map((user) => user.userName);
-
-//     const responseData = {
-//       currentUser: currentUser.userName,
-//       otherUsers: userList,
-//     };
-
-//     return response(res, "Dashboard and user list received successfully!", 200, responseData);
-//   } catch (error) {
-//     return res.status(500).send({
-//       error: (error as Error).message,
-//     });
-//   }
-// };
-
-//* For admin only
 const userDetails = async (req: UserRole, res: Response): Promise<Response> => {
   try {
     const { _id } = req.query;

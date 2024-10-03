@@ -2,7 +2,7 @@ import { useNavigate } from "react-router-dom";
 
 const NoPage = () => {
   const navigate = useNavigate();
-  const token = localStorage.getItem("token");
+  const token = sessionStorage.getItem("token");
   const redirect = () => {
     setTimeout(() => {
       if (token) {
