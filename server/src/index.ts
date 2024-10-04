@@ -4,13 +4,19 @@ import mongoose from "mongoose";
 import cors from "cors";
 import userRoute from "./route/userRoute.js";
 import chatRoute from "./route/chatRoute.js";
+import groupRoute from "./route/groupRoute.js";
 import session from "express-session";
 
 const app: Application = express();
 
 dotenv.config();
 
-app.use(cors());
+const corsOptions = {
+  origin: "http://localhost:3000",
+  credentials: true,
+};
+
+app.use(cors(corsOptions));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(
@@ -29,6 +35,7 @@ app.use(
 // *Routes
 app.use("/user", userRoute);
 app.use("/chat", chatRoute);
+app.use("/group", groupRoute);
 
 mongoose.connect(process.env.DB as string).then(() => console.log("Database connected successfully!"));
 

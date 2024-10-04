@@ -1,8 +1,9 @@
-import { Document, Schema, model } from "mongoose";
+import { Document, Schema, model, Types } from "mongoose";
 
-interface IGroups extends Document {
+export interface IGroups extends Document {
   groupName: string;
-  members: [Schema.Types.ObjectId];
+  members: Types.ObjectId[];
+  admin: Schema.Types.ObjectId;
 }
 
 const groupSchema = new Schema<IGroups>({
@@ -11,12 +12,16 @@ const groupSchema = new Schema<IGroups>({
     required: true,
     unique: true,
   },
-  members: [
-    {
-      type: Schema.Types.ObjectId,
-      ref: "Users",
-    },
-  ],
+  members: {
+    type: [Schema.Types.ObjectId],
+    ref: "Users",
+  },
+  admin: {
+    type: Schema.Types.ObjectId,
+    ref: "Users",
+    required: true,
+  },
 });
 
-export default model<IGroups>("Groups", groupSchema);
+const Group = model<IGroups>("Groups", groupSchema);
+export default Group;

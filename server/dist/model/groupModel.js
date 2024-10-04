@@ -5,11 +5,15 @@ const groupSchema = new Schema({
         required: true,
         unique: true,
     },
-    members: [
-        {
-            type: Schema.Types.ObjectId,
-            ref: "Users",
-        },
-    ],
+    members: {
+        type: [Schema.Types.ObjectId],
+        ref: "Users",
+    },
+    admin: {
+        type: Schema.Types.ObjectId,
+        ref: "Users",
+        required: true,
+    },
 });
-export default model("Groups", groupSchema);
+const Group = model("Groups", groupSchema);
+export default Group;

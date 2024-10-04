@@ -1,17 +1,17 @@
-import { Document, Schema, model } from "mongoose";
+import { Document, Schema, model, Types } from "mongoose";
 import bcrypt from "bcrypt";
 
-interface Iusers extends Document {
+export interface IUsers extends Document {
   userName: string;
   email: string;
   password: string;
   role: "user" | "admin";
-  resetToken: string;
-  resetTokenExpiration: string;
-  groups: [Schema.Types.ObjectId];
+  resetToken?: string;
+  resetTokenExpiration?: Date;
+  groups: Types.ObjectId[];
 }
 
-const userSchema = new Schema<Iusers>({
+const userSchema = new Schema<IUsers>({
   userName: {
     type: String,
     unique: true,
@@ -32,17 +32,16 @@ const userSchema = new Schema<Iusers>({
     enum: ["user", "admin"],
     default: "user",
   },
-  groups: [
-    {
-      type: Schema.Types.ObjectId,
-      ref: "Rooms",
-    },
-  ],
+  groups: {
+    type: [Schema.Types.ObjectId],
+    ref: "Groups",
+    default: [],
+  },
   resetToken: String,
   resetTokenExpiration: Date,
 });
 
-userSchema.pre<Iusers>("save", async function (next) {
+userSchema.pre<IUsers>("save", async function (next) {
   if (this.isModified("password") || this.isNew) {
     const salt = await bcrypt.genSalt(10);
     this.password = await bcrypt.hash(this.password, salt);
@@ -50,4 +49,5 @@ userSchema.pre<Iusers>("save", async function (next) {
   next();
 });
 
-export default model<Iusers>("Users", userSchema);
+const User = model<IUsers>("Users", userSchema);
+export default User;

@@ -1,7 +1,6 @@
 import userSchema from "../model/userModel.js";
 import JWT from "jsonwebtoken";
 import dotenv from "dotenv";
-import { response } from "../utils/utils.js";
 dotenv.config();
 export const authMiddleware = async (req, res, next) => {
     try {
@@ -21,19 +20,5 @@ export const authMiddleware = async (req, res, next) => {
     }
     catch (error) {
         return res.status(500).send({ message: "Error while verifying token!" });
-    }
-};
-export const isAdmin = async (req, res, next) => {
-    try {
-        const admin = req.user.role === "admin";
-        if (admin) {
-            return next();
-        }
-        else {
-            return response(res, "Only admin can access this route!");
-        }
-    }
-    catch (error) {
-        return res.status(500).send({ message: "Error while verifying Admin!" });
     }
 };

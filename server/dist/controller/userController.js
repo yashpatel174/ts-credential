@@ -48,16 +48,14 @@ const login = async (req, res) => {
 };
 const dashboard = async (req, res) => {
     try {
-        const requ = req;
-        if (!requ.user || Object.keys(requ.user).length === 0) {
+        const user = req.user;
+        if (!user) {
             return response(res, message.user_error, 400);
         }
-        const user = requ.user;
         const users = await userSchema.find({ _id: { $ne: user._id } });
         if (!users)
             return response(res, "Users not found!", 404);
-        // Returning the user list along with _id for creating a chat room
-        const userList = users?.map((u) => ({ userName: u.userName, userId: u._id }));
+        const userList = users.map((u) => ({ userName: u.userName, userId: u._id }));
         const responseData = {
             currentUser: { userName: user.userName, userId: user._id },
             otherUsers: userList,

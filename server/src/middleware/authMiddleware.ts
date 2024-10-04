@@ -19,12 +19,6 @@ interface AuthRequest extends Request {
   user: any;
 }
 
-interface Admin extends Request {
-  user: {
-    role: string;
-  };
-}
-
 export const authMiddleware = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const authReq = req as AuthRequest;
@@ -45,18 +39,5 @@ export const authMiddleware = async (req: Request, res: Response, next: NextFunc
     next();
   } catch (error) {
     return res.status(500).send({ message: "Error while verifying token!" });
-  }
-};
-
-export const isAdmin = async (req: Admin, res: Response, next: NextFunction) => {
-  try {
-    const admin = req.user.role === "admin";
-    if (admin) {
-      return next();
-    } else {
-      return response(res, "Only admin can access this route!");
-    }
-  } catch (error) {
-    return res.status(500).send({ message: "Error while verifying Admin!" });
   }
 };

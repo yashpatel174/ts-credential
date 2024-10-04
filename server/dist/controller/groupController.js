@@ -1,11 +1,10 @@
-import groupSchema from "../model/groupModel.js";
 import userSchema from "../model/userModel.js";
+import groupSchema from "../model/groupModel.js";
 import { response } from "../utils/utils.js";
 const userList = async (req, res) => {
     try {
-        const requ = req;
-        const userId = requ.user._id;
-        const { groupId } = requ.query;
+        const userId = req.user?._id;
+        const { groupId } = req.query;
         let users;
         if (groupId) {
             const group = await groupSchema.findById(groupId).select("members");
@@ -28,60 +27,129 @@ const userList = async (req, res) => {
         });
     }
 };
+const groupList = async (req, res) => {
+    try {
+        const requ = req;
+        const user = requ.user;
+        if (!user.groups || user.groups.length === 0)
+            null;
+        const groups = await groupSchema.find({ _id: { $in: user.groups } });
+        const groupList = groups?.map((g) => g.groupName);
+        return response(res, "", 200, groupList);
+    }
+    catch (error) {
+        return res.status(500).send({
+            error: error.message,
+        });
+    }
+};
 const createGroup = async (req, res) => {
     try {
-        const { groupName, members, userId } = req.body;
+        const { groupName, members } = req.body;
+        const userId = req.user?._id;
+        if (!userId) {
+            return res.status(400).json({ message: "User not authenticated." });
+        }
         if (!members || members.length < 1) {
             return res.status(400).json({ message: "At least 1 other member is required to create a group." });
         }
-        const updatedMembers = [...members, userId];
+        const users = await userSchema.find({ userName: { $in: members } });
+        const memberIds = users.map((user) => user._id);
+        const existingGroup = await groupSchema.findOne({ groupName });
+        if (existingGroup) {
+            return res.status(400).json({ message: "This group already exists!" });
+        }
+        if (!memberIds.includes(userId)) {
+            memberIds.push(userId);
+        }
         const newGroup = new groupSchema({
             groupName,
-            members: updatedMembers,
+            members: [memberIds],
+            admin: userId,
         });
         await newGroup.save();
-        await userSchema.findByIdAndUpdate(userId, {
-            $push: { groups: newGroup._id },
-        });
-        return res.status(201).json(newGroup);
+        const user = await userSchema.findById(userId);
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
+        }
+        user.groups?.push(newGroup._id);
+        await user.save();
+        return res.status(201).json({ message: "Group created successfully!", group: newGroup });
     }
     catch (error) {
+        console.error(error.message, "error in create");
         return res.status(500).json({ message: "Error creating group", error });
     }
 };
 const addUser = async (req, res) => {
     try {
-        const { groupId, userIdToAdd } = req.body;
+        const { groupId, userName } = req.body;
+        const adminId = req.user?._id;
         const group = await groupSchema.findById(groupId);
         if (!group) {
             return res.status(404).json({ message: "Group not found." });
         }
-        if (group.members.includes(userIdToAdd)) {
-            return res.status(400).json({ message: "User is already a member of the group." });
+        if (group.admin.toString() !== adminId.toString()) {
+            return response(res, "Only the admin can add members", 403);
         }
-        group.members.push(userIdToAdd);
-        await group.save();
-        return res.status(200).json({ message: "User added to group successfully!", group });
+        const user = await userSchema.findOne({ userName });
+        if (!user) {
+            return res.status(404).json({ message: "User not found." });
+        }
+        if (!group.members?.includes(user._id)) {
+            group.members?.push(user._id);
+            await group.save();
+            user.groups?.push(groupId);
+            await user.save();
+        }
+        return response(res, "User added to the group", 200, group);
     }
     catch (error) {
-        return res.status(500).json({ message: "Error adding user to group", error });
+        return res.status(500).json({ message: "Error adding user to group!", error: error.message });
     }
 };
-// const removeUser = async (req: RemoveUserRequestBody, res: Response): Promise<Response> => {
-//   try {
-//     const { groupId, userIdToRemove } = req.body;
-//     const group = await groupSchema.findById(groupId);
-//     if (!group) {
-//       return res.status(404).json({ message: "Group not found." });
-//     }
-//     if (!group.members.includes(userIdToRemove)) {
-//       return res.status(400).json({ message: "User is not a member of the group." });
-//     }
-//     group.members = group.members.filter((member: string) => member !== userIdToRemove);
-//     await group.save();
-//     return res.status(200).json({ message: "User removed from group successfully!", group });
-//   } catch (error) {
-//     return res.status(500).json({ message: "Error removing user from group", error });
-//   }
-// };
-export { userList, createGroup, addUser };
+const removeUser = async (req, res) => {
+    try {
+        const { groupId, userId } = req.body;
+        const adminId = req.user?._id;
+        const group = await groupSchema.findById(groupId);
+        if (!group)
+            return response(res, "Group not found!", 404);
+        if (group.admin.toString() !== adminId.toString()) {
+            return response(res, "Only the group admin can remove users!", 403);
+        }
+        group.members = group.members.filter((memberId) => memberId.toString() !== userId.toString());
+        await group.save();
+        const user = await userSchema.findById(userId);
+        !user
+            ? response(res, "User not found!", 404)
+            : (user.groups = user.groups.filter((gId) => gId.toString() !== groupId.toString()));
+        return response(res, "User removed from the group", 200);
+    }
+    catch (error) {
+        return res.status(500).json({ message: "Error removing user from the group!", error: error.message });
+    }
+};
+const deleteGroup = async (req, res) => {
+    try {
+        const { groupId } = req.params;
+        const adminId = req.user?._id;
+        const group = await groupSchema.findById(groupId);
+        if (!group)
+            return response(res, "Group not found!", 404);
+        if (group.admin.toString() !== adminId.toString()) {
+            return res.status(403).json({ message: "Only the group admin can delete the group" });
+        }
+        if (group.members.length > 0)
+            return response(res, "Group can't be deleted as it contains members");
+        const deletedGroup = await groupSchema.deleteOne({ _id: groupId });
+        if (!deletedGroup)
+            return response(res, "Group is not deleted!");
+        await userSchema.updateMany({ groups: groupId }, { $pull: { groups: groupId } });
+        return response(res, "Group deleted successfully!", 200);
+    }
+    catch (error) {
+        return res.status(500).json({ message: "Error while deleting group!", error: error.message });
+    }
+};
+export { userList, groupList, createGroup, addUser, removeUser, deleteGroup };

@@ -1,4 +1,5 @@
-import userSchema from "../model/userModel.js";
+import userSchema, { IUsers } from "../model/userModel.js";
+import { Types } from "mongoose";
 import { Request, Response } from "express";
 import bcrypt from "bcrypt";
 import JWT from "jsonwebtoken";
@@ -27,17 +28,18 @@ interface User extends Request {
 }
 
 interface CustomRequest extends Request {
-  user: {
-    _id: string;
+  user?: {
+    _id: Types.ObjectId;
     userName: string;
-    groups: string;
+    role: string;
   };
 }
 
 interface UserRole extends Request {
-  user: {
+  user?: {
+    _id: Types.ObjectId;
+    userName: string;
     role: string;
-    _id: string;
   };
 }
 
@@ -87,19 +89,18 @@ const login = async (req: Request<{}, {}, UserTypes>, res: Response): Promise<Re
   }
 };
 
-const dashboard = async (req: Request, res: Response): Promise<Response> => {
+const dashboard = async (req: CustomRequest, res: Response): Promise<Response> => {
   try {
-    const requ = req as CustomRequest;
-    if (!requ.user || Object.keys(requ.user).length === 0) {
+    const user = req.user;
+
+    if (!user) {
       return response(res, message.user_error, 400);
     }
-    const user = requ.user;
 
     const users = await userSchema.find({ _id: { $ne: user._id } });
     if (!users) return response(res, "Users not found!", 404);
 
-    // Returning the user list along with _id for creating a chat room
-    const userList = users?.map((u) => ({ userName: u.userName, userId: u._id }));
+    const userList = users.map((u) => ({ userName: u.userName, userId: u._id }));
 
     const responseData = {
       currentUser: { userName: user.userName, userId: user._id },
