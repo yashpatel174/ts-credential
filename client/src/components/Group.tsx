@@ -24,8 +24,11 @@ const Group: FC<GroupProps> = ({ selectedUsers }) => {
 
     const token = sessionStorage.getItem("token");
     if (!token) toast.error("User is not authenticated!");
+    console.log(token, "token");
+
     try {
       await createGroup({ groupName, members: selectedUsers.map((user) => user.userId) });
+      if (!createGroup) toast.error("Group not created, please try again!");
       toast.success("Group created successfully!");
       setGroupName("");
     } catch (error) {

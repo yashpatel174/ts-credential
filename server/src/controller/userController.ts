@@ -1,4 +1,5 @@
 import userSchema, { IUsers } from "../model/userModel.js";
+import groupSchema, { IGroups } from "../model/groupModel.js";
 import { Types } from "mongoose";
 import { Request, Response } from "express";
 import bcrypt from "bcrypt";
@@ -101,10 +102,16 @@ const dashboard = async (req: CustomRequest, res: Response): Promise<Response> =
     if (!users) return response(res, "Users not found!", 404);
 
     const userList = users.map((u) => ({ userName: u.userName, userId: u._id }));
+    const groupList = await groupSchema.find({
+      members: { $in: [user._id as Types.ObjectId] },
+    });
+
+    const groups = groupList.map((g) => ({ groupName: g.groupName, _id: g._id }));
 
     const responseData = {
       currentUser: { userName: user.userName, userId: user._id },
       otherUsers: userList,
+      groups: groups,
     };
 
     return response(res, message.dashboard, 200, responseData);

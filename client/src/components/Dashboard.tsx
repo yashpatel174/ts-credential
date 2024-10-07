@@ -5,15 +5,25 @@ import Group from "./Group";
 
 interface Message {
   senderId: string;
-  receiverId: string;
+  receiverId?: string;
+  groupId?: string;
   message: string;
   timestamp: string;
+}
+
+interface SendMessagePayload {
+  senderId: string;
+  message: string;
+  receiverId?: string;
+  groupId?: string;
 }
 
 const Dashboard: FC = () => {
   const [userName, setUserName] = useState<string>("");
   const [users, setUsers] = useState<{ userName: string; userId: string }[]>([]);
+  const [groups, setGroups] = useState<{ groupName: string; groupId: string }[]>([]);
   const [selectedUser, setSelectedUser] = useState<{ userName: string; userId: string } | null>(null);
+  const [selectedGroup, setSelectedGroup] = useState<{ groupName: string; groupId: string } | null>(null);
   const [selectedUsers, setSelectedUsers] = useState<{ userName: string; userId: string }[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState<string>("");
@@ -22,7 +32,7 @@ const Dashboard: FC = () => {
   const chatContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const fetchUsers = async () => {
+    const fetchUsersAndGroups = async () => {
       try {
         const token = sessionStorage.getItem("token");
 
@@ -37,15 +47,16 @@ const Dashboard: FC = () => {
           },
         });
 
-        const { currentUser, otherUsers } = response.data.result;
+        const { currentUser, otherUsers, groups } = response.data.result;
         setUserName(currentUser.userName || "");
         setUsers(otherUsers || []);
+        setGroups(groups || []);
       } catch (error) {
-        console.error("Error fetching users:", error);
+        console.error("Error fetching users and groups:", error);
       }
     };
 
-    fetchUsers();
+    fetchUsersAndGroups();
   }, []);
 
   const handleUserClick = (user: { userName: string; userId: string }) => {
@@ -63,32 +74,46 @@ const Dashboard: FC = () => {
     }
   };
 
-  const loadChatMessages = async (selectedUserId: string) => {
+  const handleGroupClickk = (group: { groupName: string; groupId: string }) => {
+    setSelectedGroup(group);
+    loadChatMessages(group.groupId);
+  };
+
+  const loadChatMessages = async (selectedId: string, selectedGroupId?: string) => {
     try {
       const token = sessionStorage.getItem("token");
       if (!token) {
         return toast.error("No authentication token found.");
       }
 
-      const res = await axios.get("http://localhost:8080/user/dashboard", {
+      // Fetch current user details
+      const userResponse = await axios.get("http://localhost:8080/user/dashboard", {
         headers: {
           Authorization: `Bearer ${token}`,
         },
       });
-      const currentUser = res.data.result.currentUser;
+
+      const currentUser = userResponse.data.result.currentUser;
       if (!currentUser || !currentUser.userId) {
         return toast.error("Current user not found");
       }
 
       const currentUserId = currentUser.userId;
-      const response = await axios.get(`http://localhost:8080/chat/${currentUserId}/${selectedUserId}`, {
+
+      // Construct the endpoint URL
+      const endpointUrl = `http://localhost:8080/chat/${currentUserId}/${selectedId}${
+        selectedGroupId ? `/${selectedGroupId}` : ""
+      }`;
+
+      // Make the API call to get messages
+      const response = await axios.get(endpointUrl, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
+      // Set messages from the response
       setMessages(response.data.result.messages || []);
-      console.log(messages, "messages");
     } catch (error) {
-      console.error("Error loading messages", error);
+      console.log("Error loading messages", (error as Error).message);
       toast.error("Failed to load messages.");
     }
   };
@@ -96,8 +121,8 @@ const Dashboard: FC = () => {
   const sendMessage = async () => {
     try {
       const token = sessionStorage.getItem("token");
-      if (!token || !selectedUser) {
-        toast.error("No token or selected user found.");
+      if (!token) {
+        toast.error("No token found.");
         return;
       }
 
@@ -112,18 +137,27 @@ const Dashboard: FC = () => {
       }
 
       const currentUserId = currentUser.userId;
+      const payload: SendMessagePayload = {
+        senderId: currentUserId,
+        message: newMessage,
+        ...(isGroup && selectedGroup ? { groupId: selectedGroup.groupId } : {}),
+        ...(selectedUser ? { receiverId: selectedUser.userId } : {}),
+      };
 
-      const response = await axios.post(
-        "http://localhost:8080/chat/send",
-        {
-          senderId: currentUserId,
-          receiverId: selectedUser.userId,
-          message: newMessage,
-        },
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
+      if (isGroup && selectedGroup) {
+        // Sending message to the group
+        payload.groupId = selectedGroup.groupId;
+      } else if (selectedUser) {
+        // Sending message to a single user
+        payload.receiverId = selectedUser.userId;
+      } else {
+        toast.error("No user or group selected.");
+        return;
+      }
+
+      const response = await axios.post("http://localhost:8080/chat/send", payload, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
       setMessages((prevMessages) => [...prevMessages, response.data.messages]);
       setNewMessage("");
@@ -149,16 +183,26 @@ const Dashboard: FC = () => {
       <div className="d-flex justify-content-center align-items-center w-full">
         <div
           style={{ width: "90%" }}
-          className="d-flex  justify-content-between"
+          className="d-flex justify-content-between"
         >
           <h1 className="text-center my-2">{userName}</h1>
-          <button
-            className="bg-black text-white rounded-lg border-0 my-2 px-3"
-            style={{ fontSize: "1rem", borderRadius: "20px" }}
-            onClick={toggleGroup}
-          >
-            Create Group
-          </button>
+          {isGroup ? (
+            <button
+              className="bg-black text-white rounded-lg border-0 my-2 px-3"
+              style={{ fontSize: "1rem", borderRadius: "20px" }}
+              onClick={toggleGroup}
+            >
+              Chatting Room
+            </button>
+          ) : (
+            <button
+              className="bg-black text-white rounded-lg border-0 my-2 px-3"
+              style={{ fontSize: "1rem", borderRadius: "20px" }}
+              onClick={toggleGroup}
+            >
+              Create Group
+            </button>
+          )}
         </div>
       </div>
       <div className="row min-vh-75">
@@ -177,6 +221,23 @@ const Dashboard: FC = () => {
             ))}
           </ul>
           <hr />
+          {isGroup ? null : (
+            <>
+              <h1 className="text-center mb-4">Groups</h1>
+              <ul className="list-unstyled">
+                {groups?.map((group) => (
+                  <li
+                    key={group.groupId}
+                    className="border rounded shadow-sm mb-2 p-2 text-center text-white"
+                    style={{ backgroundColor: "#ff803e", cursor: "pointer" }}
+                    onClick={() => handleGroupClickk(group)}
+                  >
+                    {group.groupName}
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
         </div>
         <div className="bg-black col-9 pl-4">
           {isGroup ? (
@@ -198,9 +259,7 @@ const Dashboard: FC = () => {
                     }
 
                     const currentUser = users.find((u) => u.userName === userName);
-                    console.log(currentUser, "currentUser");
                     const currentUserId = currentUser ? currentUser.userId : null;
-
                     const isUserMessage = msg.senderId === currentUserId;
 
                     return (
@@ -229,21 +288,19 @@ const Dashboard: FC = () => {
                       sendMessage();
                     }}
                   >
-                    <div className="input-group">
-                      <input
-                        type="text"
-                        className="form-control"
-                        placeholder="Type your message..."
-                        value={newMessage}
-                        onChange={(e) => setNewMessage(e.target.value)}
-                      />
-                      <button
-                        className="btn btn-primary"
-                        type="submit"
-                      >
-                        Send
-                      </button>
-                    </div>
+                    <input
+                      type="text"
+                      value={newMessage}
+                      onChange={(e) => setNewMessage(e.target.value)}
+                      className="form-control mb-2"
+                      placeholder="Type your message..."
+                    />
+                    <button
+                      type="submit"
+                      className="btn btn-primary"
+                    >
+                      Send
+                    </button>
                   </form>
                 </div>
               </div>

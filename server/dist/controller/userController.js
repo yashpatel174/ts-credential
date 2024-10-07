@@ -1,4 +1,5 @@
 import userSchema from "../model/userModel.js";
+import groupSchema from "../model/groupModel.js";
 import bcrypt from "bcrypt";
 import JWT from "jsonwebtoken";
 import nodemailer from "nodemailer";
@@ -56,9 +57,14 @@ const dashboard = async (req, res) => {
         if (!users)
             return response(res, "Users not found!", 404);
         const userList = users.map((u) => ({ userName: u.userName, userId: u._id }));
+        const groupList = await groupSchema.find({
+            members: { $in: [user._id] },
+        });
+        const groups = groupList.map((g) => ({ groupName: g.groupName, _id: g._id }));
         const responseData = {
             currentUser: { userName: user.userName, userId: user._id },
             otherUsers: userList,
+            groups: groups,
         };
         return response(res, message.dashboard, 200, responseData);
     }
