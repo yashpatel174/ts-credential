@@ -28,6 +28,17 @@ const userList = async (req, res) => {
         });
     }
 };
+const groupData = async (req, res) => {
+    try {
+        const users = await groupSchema.find({});
+        if (!users)
+            return response(res, "User not found", 404);
+        return response(res, "User details fetched successfully!", 200, users);
+    }
+    catch (error) {
+        return response(res, "Erorr while getting data!", 500, error.message);
+    }
+};
 const createGroup = async (req, res) => {
     try {
         const { groupName, members } = req.body;
@@ -85,7 +96,7 @@ const createGroup = async (req, res) => {
 };
 const addUser = async (req, res) => {
     try {
-        const { groupId, userName } = req.body;
+        const { groupId, userId } = req.body;
         const adminId = req.user?._id;
         const group = await groupSchema.findById(groupId);
         if (!group) {
@@ -94,7 +105,7 @@ const addUser = async (req, res) => {
         if (group.admin.toString() !== adminId.toString()) {
             return response(res, "Only the admin can add members", 403);
         }
-        const user = await userModel.findOne({ userName });
+        const user = await userModel.findById(userId);
         if (!user) {
             return res.status(404).json({ message: "User not found." });
         }
@@ -123,9 +134,10 @@ const removeUser = async (req, res) => {
         group.members = group.members.filter((memberId) => memberId.toString() !== userId.toString());
         await group.save();
         const user = await userModel.findById(userId);
-        !user
-            ? response(res, "User not found!", 404)
-            : (user.groups = user.groups.filter((gId) => gId.toString() !== groupId.toString()));
+        if (!user)
+            return response(res, "User not found", 404);
+        user.groups = user.groups.filter((gId) => gId.toString() !== groupId.toString());
+        await user.save();
         return response(res, "User removed from the group", 200);
     }
     catch (error) {
@@ -154,4 +166,4 @@ const deleteGroup = async (req, res) => {
         return res.status(500).json({ message: "Error while deleting group!", error: error.message });
     }
 };
-export { userList, createGroup, addUser, removeUser, deleteGroup };
+export { userList, createGroup, groupData, addUser, removeUser, deleteGroup };

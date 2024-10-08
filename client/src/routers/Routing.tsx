@@ -11,6 +11,7 @@ import Dashboard from "../components/Dashboard";
 import NoPage from "../components/NoPage";
 import Private from "../components/Private";
 import ForgotPassword from "../components/ForgotPassword";
+import UserData from "../components/UserData";
 
 const Routing: React.FC = () => {
   return (
@@ -44,6 +45,10 @@ const Routing: React.FC = () => {
             element={<Private element={<Dashboard />} />}
           />
           <Route
+            path="/about/:_id"
+            element={<Private element={<UserData />} />}
+          />
+          <Route
             path="*"
             element={<NoPage />}
           />
@@ -59,7 +64,6 @@ const AuthCheck: FC = () => {
   useEffect(() => {
     const token = sessionStorage.getItem("token");
     if (token) {
-      navigate("/dashboard");
     } else {
       const currentPath = window.location.pathname;
       navigate(currentPath);

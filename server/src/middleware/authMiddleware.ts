@@ -26,7 +26,7 @@ export const authMiddleware = async (req: Request, res: Response, next: NextFunc
     const token = authReq.headers.authorization
       ? authReq.headers.authorization.replace("Bearer ", "")
       : authReq.session.token;
-    if (!token) return res.send({ message: "Token not provided or invalid token!" });
+    if (!token) return response(res, "Token is not provided!", 404);
 
     const decoded: any = JWT.verify(token, process.env.SECRET_KEY as string);
 

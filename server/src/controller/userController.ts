@@ -124,13 +124,15 @@ const dashboard = async (req: CustomRequest, res: Response): Promise<Response> =
 
 const userDetails = async (req: UserRole, res: Response): Promise<Response> => {
   try {
-    const { _id } = req.query;
+    const { _id } = req.params;
+    console.log(_id, "id of user");
 
     const user = await userSchema.findById(_id);
     if (!user) return response(res, "Erorr while getting user information!", 500);
 
     return response(res, "User data fetched successfully!", 200, user);
   } catch (error) {
+    console.log((error as Error).message);
     return res.status(500).send({
       error: (error as Error).message,
     });

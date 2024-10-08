@@ -2,34 +2,43 @@ import { FC, useEffect, useState, useRef } from "react";
 import { toast } from "react-toastify";
 import axios from "axios";
 import Group from "./Group";
+import { Link } from "react-router-dom";
 
 interface Message {
   senderId: string;
-  receiverId?: string;
   groupId?: string;
+  receiverId?: string;
+  _id?: string;
   message: string;
   timestamp: string;
 }
 
 interface SendMessagePayload {
   senderId: string;
+  groupId?: string;
   message: string;
   receiverId?: string;
-  groupId?: string;
+  _id?: string;
 }
 
 const Dashboard: FC = () => {
   const [userName, setUserName] = useState<string>("");
   const [users, setUsers] = useState<{ userName: string; userId: string }[]>([]);
-  const [groups, setGroups] = useState<{ groupName: string; groupId: string }[]>([]);
+  const [groups, setGroups] = useState<{ groupName: string; _id: string }[]>([]);
   const [selectedUser, setSelectedUser] = useState<{ userName: string; userId: string } | null>(null);
-  const [selectedGroup, setSelectedGroup] = useState<{ groupName: string; groupId: string } | null>(null);
-  const [selectedUsers, setSelectedUsers] = useState<{ userName: string; userId: string }[]>([]);
+  const [selectedGroup, setSelectedGroup] = useState<{ groupName: string; _id: string } | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState<string>("");
   const [isGroup, setIsGroup] = useState<boolean>(false);
 
   const chatContainerRef = useRef<HTMLDivElement>(null);
+  const selectedName = selectedUser?.userName ?? selectedGroup?.groupName ?? "No user or group selected";
+  const linkDestination = selectedUser
+    ? `/about/${selectedUser.userId}`
+    : selectedGroup
+    ? `/about/${selectedGroup._id}`
+    : "";
 
   useEffect(() => {
     const fetchUsersAndGroups = async () => {
@@ -61,59 +70,50 @@ const Dashboard: FC = () => {
 
   const handleUserClick = (user: { userName: string; userId: string }) => {
     if (isGroup) {
-      setSelectedUsers((prev) => {
-        if (prev.find((u) => u.userId === user.userId)) {
-          return prev.filter((u) => u.userId !== user.userId);
-        } else {
-          return [...prev, user];
-        }
-      });
+      setSelectedId(null);
     } else {
       setSelectedUser(user);
-      loadChatMessages(user.userId);
+      setSelectedId(user.userId);
+      loadChatMessages(user.userId, "");
     }
   };
 
-  const handleGroupClickk = (group: { groupName: string; groupId: string }) => {
+  const handleGroupClickk = (group: { groupName: string; _id: string }) => {
     setSelectedGroup(group);
-    loadChatMessages(group.groupId);
+    setSelectedId(group._id);
+    loadChatMessages("", group._id);
   };
 
-  const loadChatMessages = async (selectedId: string, selectedGroupId?: string) => {
+  const loadChatMessages = async (selectedUserId?: string, selectedGroupId?: string) => {
     try {
       const token = sessionStorage.getItem("token");
       if (!token) {
         return toast.error("No authentication token found.");
       }
 
-      // Fetch current user details
-      const userResponse = await axios.get("http://localhost:8080/user/dashboard", {
+      const dashboard = await axios.get("http://localhost:8080/user/dashboard", {
         headers: {
           Authorization: `Bearer ${token}`,
         },
       });
 
-      const currentUser = userResponse.data.result.currentUser;
+      const currentUser = dashboard.data.result.currentUser;
       if (!currentUser || !currentUser.userId) {
         return toast.error("Current user not found");
       }
 
       const currentUserId = currentUser.userId;
 
-      // Construct the endpoint URL
-      const endpointUrl = `http://localhost:8080/chat/${currentUserId}/${selectedId}${
-        selectedGroupId ? `/${selectedGroupId}` : ""
-      }`;
+      const response = await axios.get(
+        `http://localhost:8080/chat/${currentUserId}/${selectedUserId ? selectedUserId : selectedGroupId}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
 
-      // Make the API call to get messages
-      const response = await axios.get(endpointUrl, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      // Set messages from the response
-      setMessages(response.data.result.messages || []);
+      setMessages(response.data.result.messages);
     } catch (error) {
-      console.log("Error loading messages", (error as Error).message);
+      console.error("Error loading messages", error);
       toast.error("Failed to load messages.");
     }
   };
@@ -131,6 +131,7 @@ const Dashboard: FC = () => {
           Authorization: `Bearer ${token}`,
         },
       });
+
       const currentUser = res.data.result.currentUser;
       if (!currentUser || !currentUser.userId) {
         return toast.error("Current user not found");
@@ -140,19 +141,12 @@ const Dashboard: FC = () => {
       const payload: SendMessagePayload = {
         senderId: currentUserId,
         message: newMessage,
-        ...(isGroup && selectedGroup ? { groupId: selectedGroup.groupId } : {}),
+        ...(isGroup && selectedGroup ? { groupId: selectedGroup._id } : {}),
         ...(selectedUser ? { receiverId: selectedUser.userId } : {}),
       };
 
-      if (isGroup && selectedGroup) {
-        // Sending message to the group
-        payload.groupId = selectedGroup.groupId;
-      } else if (selectedUser) {
-        // Sending message to a single user
-        payload.receiverId = selectedUser.userId;
-      } else {
-        toast.error("No user or group selected.");
-        return;
+      if (!selectedId) {
+        return toast.error("No user or group selected.");
       }
 
       const response = await axios.post("http://localhost:8080/chat/send", payload, {
@@ -168,15 +162,18 @@ const Dashboard: FC = () => {
     }
   };
 
+  const toggleGroup = () => {
+    setIsGroup((prev) => !prev);
+    setSelectedId(null);
+    setSelectedUser(null);
+    setSelectedGroup(null);
+  };
+
   useEffect(() => {
     if (chatContainerRef.current) {
       chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
     }
   }, [messages]);
-
-  const toggleGroup = () => {
-    setIsGroup((prev) => !prev);
-  };
 
   return (
     <div>
@@ -186,27 +183,17 @@ const Dashboard: FC = () => {
           className="d-flex justify-content-between"
         >
           <h1 className="text-center my-2">{userName}</h1>
-          {isGroup ? (
-            <button
-              className="bg-black text-white rounded-lg border-0 my-2 px-3"
-              style={{ fontSize: "1rem", borderRadius: "20px" }}
-              onClick={toggleGroup}
-            >
-              Chatting Room
-            </button>
-          ) : (
-            <button
-              className="bg-black text-white rounded-lg border-0 my-2 px-3"
-              style={{ fontSize: "1rem", borderRadius: "20px" }}
-              onClick={toggleGroup}
-            >
-              Create Group
-            </button>
-          )}
+          <button
+            className="bg-black text-white rounded-lg border-0 my-2 px-3"
+            style={{ fontSize: "1rem", borderRadius: "20px" }}
+            onClick={toggleGroup}
+          >
+            {isGroup ? "Chatting Room" : "Create Group"}
+          </button>
         </div>
       </div>
       <div className="row min-vh-75">
-        <div className="col-3 bg-black text-white px-4">
+        <div className="col-2 bg-black text-white px-4">
           <h1 className="text-center mb-4">Users</h1>
           <ul className="list-unstyled">
             {users?.map((user) => (
@@ -221,13 +208,13 @@ const Dashboard: FC = () => {
             ))}
           </ul>
           <hr />
-          {isGroup ? null : (
+          {!isGroup && (
             <>
               <h1 className="text-center mb-4">Groups</h1>
               <ul className="list-unstyled">
                 {groups?.map((group) => (
                   <li
-                    key={group.groupId}
+                    key={group._id}
                     className="border rounded shadow-sm mb-2 p-2 text-center text-white"
                     style={{ backgroundColor: "#ff803e", cursor: "pointer" }}
                     onClick={() => handleGroupClickk(group)}
@@ -239,73 +226,66 @@ const Dashboard: FC = () => {
             </>
           )}
         </div>
-        <div className="bg-black col-9 pl-4">
-          {isGroup ? (
-            <Group selectedUsers={selectedUsers} />
-          ) : (
-            <>
-              <div className="text-white p-3 mb-2">
-                <h5>{selectedUser ? `Chat with ${selectedUser.userName}` : "Select a user to chat"}</h5>
-              </div>
-              <div
-                className="max-vh-50 overflow-auto"
-                style={{ height: "50vh" }}
-                ref={chatContainerRef}
-              >
-                <div className="chat-message mb-2 px-2">
-                  {messages.map((msg, idx) => {
-                    if (!msg || !msg.senderId) {
-                      return null;
-                    }
+        <div className="bg-black col-10 px-4">
+          <h5 className="text-white p-3 mb-2">
+            <Link
+              className="text-white text-decoration-none"
+              to={linkDestination}
+            >
+              {selectedId ? `Chat with ${selectedName}` : selectedName}
+            </Link>
+          </h5>
+          <div
+            className="max-vh-50 overflow-auto"
+            style={{ height: "50vh" }}
+            ref={chatContainerRef}
+          >
+            {messages.map((msg, idx) => {
+              if (!msg || !msg.senderId) {
+                return null;
+              }
 
-                    const currentUser = users.find((u) => u.userName === userName);
-                    const currentUserId = currentUser ? currentUser.userId : null;
-                    const isUserMessage = msg.senderId === currentUserId;
+              const currentUser = users.find((u) => u.userName === userName);
+              const isUserMessage = msg.senderId === currentUser?.userId;
 
-                    return (
-                      <div
-                        key={idx}
-                        className={`mb-2 d-flex ${isUserMessage ? "justify-content-end" : "justify-content-start"}`}
-                      >
-                        <div
-                          className={`p-2 rounded ${isUserMessage ? "bg-danger text-white" : "bg-light text-dark"}`}
-                          style={{
-                            maxWidth: "75%",
-                            wordWrap: "break-word",
-                          }}
-                        >
-                          <p className="mb-0">{msg.message}</p>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                <div className="d-flex flex-column justify-content-end bg-dark p-3 h-full">
-                  <form
-                    onSubmit={(e) => {
-                      e.preventDefault();
-                      sendMessage();
-                    }}
+              return (
+                <div
+                  key={idx}
+                  className={`mb-2 d-flex ${isUserMessage ? "justify-content-end" : "justify-content-start"}`}
+                >
+                  <div
+                    className={`p-2 rounded ${isUserMessage ? "bg-danger text-white" : "bg-light text-dark"}`}
+                    style={{ maxWidth: "75%", wordWrap: "break-word" }}
                   >
-                    <input
-                      type="text"
-                      value={newMessage}
-                      onChange={(e) => setNewMessage(e.target.value)}
-                      className="form-control mb-2"
-                      placeholder="Type your message..."
-                    />
-                    <button
-                      type="submit"
-                      className="btn btn-primary"
-                    >
-                      Send
-                    </button>
-                  </form>
+                    <p className="mb-0">{msg.message}</p>
+                  </div>
                 </div>
-              </div>
-            </>
-          )}
+              );
+            })}
+          </div>
+
+          <div className="d-flex flex-column justify-content-end bg-dark p-3 h-full">
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                sendMessage();
+              }}
+            >
+              <input
+                type="text"
+                value={newMessage}
+                onChange={(e) => setNewMessage(e.target.value)}
+                className="form-control mb-2"
+                placeholder="Type your message..."
+              />
+              <button
+                type="submit"
+                className="btn btn-primary"
+              >
+                Send
+              </button>
+            </form>
+          </div>
         </div>
       </div>
     </div>

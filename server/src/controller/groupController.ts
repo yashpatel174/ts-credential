@@ -54,6 +54,16 @@ const userList = async (req: Request<{}, {}, {}, GroupQuery>, res: Response): Pr
   }
 };
 
+const groupData = async (req: Request, res: Response): Promise<Response> => {
+  try {
+    const users = await groupSchema.find({});
+    if (!users) return response(res, "User not found", 404);
+    return response(res, "User details fetched successfully!", 200, users);
+  } catch (error) {
+    return response(res, "Erorr while getting data!", 500, (error as Error).message);
+  }
+};
+
 const createGroup = async (req: Request, res: Response): Promise<Response> => {
   try {
     const { groupName, members }: { groupName: string; members: string[] } = req.body;
@@ -124,7 +134,7 @@ const createGroup = async (req: Request, res: Response): Promise<Response> => {
 
 const addUser = async (req: Request, res: Response): Promise<Response> => {
   try {
-    const { groupId, userName }: { groupId: Types.ObjectId; userName: string } = req.body;
+    const { groupId, userId }: { groupId: Types.ObjectId; userId: Types.ObjectId } = req.body;
     const adminId: Types.ObjectId = req.user?._id as Types.ObjectId;
 
     const group: IGroups | null = await groupSchema.findById(groupId);
@@ -136,7 +146,7 @@ const addUser = async (req: Request, res: Response): Promise<Response> => {
       return response(res, "Only the admin can add members", 403);
     }
 
-    const user: IUsers | null = await userModel.findOne({ userName });
+    const user: IUsers | null = await userModel.findById(userId);
     if (!user) {
       return res.status(404).json({ message: "User not found." });
     }
@@ -171,9 +181,9 @@ const removeUser = async (req: Request, res: Response): Promise<Response> => {
     await group.save();
 
     const user: IUsers | null = await userModel.findById(userId);
-    !user
-      ? response(res, "User not found!", 404)
-      : (user.groups = user.groups.filter((gId) => gId.toString() !== groupId.toString()));
+    if (!user) return response(res, "User not found", 404);
+    user.groups = user.groups.filter((gId) => gId.toString() !== groupId.toString());
+    await user.save();
 
     return response(res, "User removed from the group", 200);
   } catch (error) {
@@ -206,4 +216,4 @@ const deleteGroup = async (req: Request<GroupParams>, res: Response): Promise<Re
   }
 };
 
-export { userList, createGroup, addUser, removeUser, deleteGroup };
+export { userList, createGroup, groupData, addUser, removeUser, deleteGroup };

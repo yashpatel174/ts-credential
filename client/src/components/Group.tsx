@@ -17,22 +17,34 @@ const Group: FC<GroupProps> = ({ selectedUsers }) => {
 
   const handleCreateGroup = async (e: FormEvent) => {
     e.preventDefault();
+
     if (selectedUsers.length < 2) {
       toast.error("At least two members are required.");
       return;
     }
 
+    // Retrieve the token from session storage
     const token = sessionStorage.getItem("token");
-    if (!token) toast.error("User is not authenticated!");
-    console.log(token, "token");
+    if (!token) {
+      toast.error("User is not authenticated! Please log in.");
+      return;
+    }
 
     try {
-      await createGroup({ groupName, members: selectedUsers.map((user) => user.userId) });
-      if (!createGroup) toast.error("Group not created, please try again!");
-      toast.success("Group created successfully!");
-      setGroupName("");
+      const response = await createGroup({
+        groupName,
+        members: selectedUsers.map((user) => user.userId),
+      });
+
+      // Handle the API response
+      if (!response || response.data.error) {
+        toast.error("Group not created, please try again!");
+      } else {
+        toast.success("Group created successfully!");
+        setGroupName("");
+      }
     } catch (error) {
-      toast.error("Error creating group!");
+      toast.error("Error creating group! Please check your input and try again.");
     }
   };
 

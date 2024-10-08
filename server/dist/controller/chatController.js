@@ -27,25 +27,34 @@ io.on("connection", (socket) => {
 server.listen(5000, () => {
     console.log("Server is running on port 5000");
 });
-const getMessage = async (req, res) => {
+const userMessage = async (req, res) => {
     try {
-        const { currentUserId, selectedUserId, selectedGroupId } = req.params;
-        const query = {};
-        if (selectedGroupId) {
-            query.groupId = selectedGroupId;
-            console.log(selectedGroupId, "selectedGroupId");
-        }
-        else {
-            query.$or = [
+        const { currentUserId, selectedUserId } = req.params;
+        const messages = await Chat.find({
+            $or: [
                 { senderId: currentUserId, receiverId: selectedUserId },
                 { senderId: selectedUserId, receiverId: currentUserId },
-            ];
-        }
-        const messages = await Chat.find(query).sort({ timeStamp: 1 });
+            ],
+        }).sort({ timeStampo: 1 });
         return response(res, "Messages retrieved successfully", 200, { messages });
     }
     catch (error) {
         return res.status(500).send({
+            success: false,
+            message: "Error while getting messages!",
+            error: error.message,
+        });
+    }
+};
+const groupMessage = async (req, res) => {
+    try {
+        const { currentUserId, selectedGroupId } = req.params;
+        const messages = await Chat.find({ groupId: selectedGroupId, senderId: currentUserId }).sort({ timeStamp: 1 });
+        console.log(messages, "messages log in backend");
+        return response(res, "Messages retrieved successfully", 200, messages);
+    }
+    catch (error) {
+        return res.status(500).json({
             success: false,
             message: "Error while getting messages!",
             error: error.message,
@@ -77,10 +86,7 @@ const sendMessage = async (req, res) => {
                 receiverId,
                 message,
             });
-            console.log(newMessage, "newMessage before save");
             const savedMessage = await newMessage.save();
-            console.log(savedMessage, "savedMessage");
-            console.log(newMessage, "newMessage after save");
             return response(res, "", 201, newMessage);
         }
     }
@@ -92,4 +98,4 @@ const sendMessage = async (req, res) => {
         });
     }
 };
-export { getMessage, sendMessage };
+export { userMessage, groupMessage, sendMessage };
