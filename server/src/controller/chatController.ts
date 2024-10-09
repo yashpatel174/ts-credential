@@ -58,11 +58,13 @@ const groupMessage = async (req: Request, res: Response): Promise<Response> => {
   try {
     const { currentUserId, selectedGroupId } = req.params;
 
-    const messages = await Chat.find({ groupId: selectedGroupId, senderId: currentUserId }).sort({ timeStamp: 1 });
+    const messages = await Chat.find({ senderId: currentUserId, groupId: selectedGroupId }).sort({ timeStamp: 1 });
+    if (!messages || messages.length === 0) return response(res, "No data found", 404);
     console.log(messages, "messages log in backend");
 
-    return response(res, "Messages retrieved successfully", 200, messages);
+    return response(res, "Messages retrieved successfully", 200, { messages });
   } catch (error) {
+    console.log((error as Error).message);
     return res.status(500).json({
       success: false,
       message: "Error while getting messages!",
@@ -73,35 +75,29 @@ const groupMessage = async (req: Request, res: Response): Promise<Response> => {
 
 const sendMessage = async (req: Request, res: Response): Promise<Response> => {
   try {
-    const { senderId, receiverId, message, groupId, sendToGroup } = req.body;
+    const { senderId, receiverId, message, groupId } = req.body;
 
-    if (sendToGroup && groupId) {
+    let newMessage;
+
+    if (groupId) {
       const group = await groupSchema.findById(groupId);
-      if (!group) {
-        return res.status(404).send({
-          success: false,
-          message: "Group not found!",
-        });
-      }
+      if (!group) return response(res, "Group not found!", 404);
 
       const groupMessage = new Chat({
         senderId,
-        message,
         groupId,
+        message,
       });
-
-      const savedGroupMessage = await groupMessage.save();
-
-      return response(res, "", 201, savedGroupMessage);
+      newMessage = await groupMessage.save();
     } else {
-      const newMessage = new Chat({
+      const userMessage = new Chat({
         senderId,
         receiverId,
         message,
       });
-      const savedMessage = await newMessage.save();
-      return response(res, "", 201, newMessage);
+      newMessage = await userMessage.save();
     }
+    return response(res, "", 201, newMessage);
   } catch (error) {
     return res.status(500).send({
       success: false,

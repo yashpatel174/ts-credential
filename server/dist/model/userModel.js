@@ -23,7 +23,7 @@ const userSchema = new Schema({
     },
     groups: {
         type: [Schema.Types.ObjectId],
-        ref: "Groups",
+        ref: "Group",
         default: [],
     },
     resetToken: String,

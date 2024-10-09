@@ -28,7 +28,7 @@ interface User extends Request {
   email: string;
 }
 
-interface CustomRequest extends Request {
+export interface CustomRequest extends Request {
   user?: {
     _id: Types.ObjectId;
     userName: string;

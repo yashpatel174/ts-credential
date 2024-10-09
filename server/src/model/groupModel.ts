@@ -23,5 +23,5 @@ const groupSchema = new Schema<IGroups>({
   },
 });
 
-const Group = model<IGroups>("Groups", groupSchema);
+const Group = model<IGroups>("Group", groupSchema);
 export default Group;

@@ -5,6 +5,7 @@ import groupSchema, { IGroups } from "../model/groupModel.js";
 import { required, response } from "../utils/utils.js";
 import { message } from "../utils/messages.js";
 import { ParamsDictionary } from "express-serve-static-core";
+import { CustomRequest } from "./userController.js";
 interface GroupParams extends ParamsDictionary {
   groupId: string;
 }
@@ -20,8 +21,10 @@ interface User {
   groups: Types.ObjectId[];
 }
 
-interface CustomRequest extends Request {
-  user: User;
+interface GroupRole extends Request {
+  group?: {
+    _id: Types.ObjectId;
+  };
 }
 
 const userList = async (req: Request<{}, {}, {}, GroupQuery>, res: Response): Promise<Response> => {
@@ -132,6 +135,23 @@ const createGroup = async (req: Request, res: Response): Promise<Response> => {
   }
 };
 
+const groupDetails = async (req: GroupRole, res: Response): Promise<Response> => {
+  try {
+    const { _id } = req.params;
+    console.log(_id, "id of user");
+
+    const group = await groupSchema.findById(_id);
+    if (!group) return response(res, "Erorr while getting group information!", 500);
+
+    return response(res, "User data fetched successfully!", 200, group);
+  } catch (error) {
+    console.log((error as Error).message);
+    return res.status(500).send({
+      error: (error as Error).message,
+    });
+  }
+};
+
 const addUser = async (req: Request, res: Response): Promise<Response> => {
   try {
     const { groupId, userId }: { groupId: Types.ObjectId; userId: Types.ObjectId } = req.body;
@@ -191,6 +211,32 @@ const removeUser = async (req: Request, res: Response): Promise<Response> => {
   }
 };
 
+const selfRemove = async (req: Request, res: Response): Promise<Response> => {
+  try {
+    const { groupId } = req.query as GroupQuery;
+    console.log(groupId);
+    console.log(req.body);
+    const userId: Types.ObjectId = req.user?._id as Types.ObjectId;
+
+    const group: IGroups | null = await groupSchema.findOne({ _id: groupId });
+    console.log(group);
+    if (!group) return response(res, "Group not found!", 404);
+
+    const user: IUsers | null = await userModel.findById(userId);
+    if (!user) return response(res, "User not found", 404);
+
+    group.members = group.members.filter((memberId) => memberId.toString() !== userId.toString());
+    user.groups = user.groups.filter((groupDetails) => groupDetails.toString() !== groupId);
+
+    await group.save();
+    await user.save();
+
+    return response(res, "Group removed successfully", 200);
+  } catch (error) {
+    return response(res, "Error while deleting group", 500, (error as Error).message);
+  }
+};
+
 const deleteGroup = async (req: Request<GroupParams>, res: Response): Promise<Response> => {
   try {
     const { groupId } = req.params;
@@ -216,4 +262,4 @@ const deleteGroup = async (req: Request<GroupParams>, res: Response): Promise<Re
   }
 };
 
-export { userList, createGroup, groupData, addUser, removeUser, deleteGroup };
+export { userList, createGroup, groupData, groupDetails, addUser, removeUser, deleteGroup, selfRemove };

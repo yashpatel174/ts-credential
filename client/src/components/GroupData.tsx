@@ -3,14 +3,13 @@ import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 
-// Define the type for the user data structure
 interface UserDataType {
   userName: string;
   email: string;
   groups: string[];
 }
 
-const UserData: React.FC = () => {
+const GroupData: React.FC = () => {
   const { _id } = useParams<{ _id: string }>();
 
   const [name, setName] = useState<string | undefined>();
@@ -26,7 +25,7 @@ const UserData: React.FC = () => {
           return;
         }
 
-        const response = await axios.get<{ result: UserDataType }>(`http://localhost:8080/user/details/${_id}`, {
+        const response = await axios.get<{ result: UserDataType }>(`http://localhost:8080/group/details/${_id}`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -69,4 +68,4 @@ const UserData: React.FC = () => {
   );
 };
 
-export default UserData;
+export default GroupData;

@@ -15,5 +15,5 @@ const groupSchema = new Schema({
         required: true,
     },
 });
-const Group = model("Groups", groupSchema);
+const Group = model("Group", groupSchema);
 export default Group;
