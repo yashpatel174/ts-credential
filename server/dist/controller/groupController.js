@@ -162,7 +162,7 @@ const removeUser = async (req, res) => {
 };
 const selfRemove = async (req, res) => {
     try {
-        const { groupId } = req.query;
+        const { groupId } = req.params;
         console.log(groupId);
         console.log(req.body);
         const userId = req.user?._id;
@@ -175,9 +175,18 @@ const selfRemove = async (req, res) => {
             return response(res, "User not found", 404);
         group.members = group.members.filter((memberId) => memberId.toString() !== userId.toString());
         user.groups = user.groups.filter((groupDetails) => groupDetails.toString() !== groupId);
-        await group.save();
-        await user.save();
-        return response(res, "Group removed successfully", 200);
+        if (group.members.length === 0 || group.members.length < 1) {
+            groupSchema.findOneAndDelete({ _id: groupId });
+        }
+        if (group.members.length === 0) {
+            await groupSchema.findOneAndDelete({ _id: groupId });
+            return response(res, "You are removed from the group successfully!", 200);
+        }
+        else {
+            await group.save();
+            await user.save();
+            return response(res, `You are removed from the group "${group.groupName}" successfully!`, 200);
+        }
     }
     catch (error) {
         return response(res, "Error while deleting group", 500, error.message);

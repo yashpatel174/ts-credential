@@ -14,6 +14,12 @@ interface GroupQuery {
   groupId?: string;
 }
 
+interface DeleteGroupRequest extends Request {
+  params: {
+    groupId: string;
+  };
+}
+
 interface User {
   _id: Types.ObjectId;
   userName: string;
@@ -213,7 +219,7 @@ const removeUser = async (req: Request, res: Response): Promise<Response> => {
 
 const selfRemove = async (req: Request, res: Response): Promise<Response> => {
   try {
-    const { groupId } = req.query as GroupQuery;
+    const { groupId } = req.params as GroupQuery;
     console.log(groupId);
     console.log(req.body);
     const userId: Types.ObjectId = req.user?._id as Types.ObjectId;
@@ -228,16 +234,24 @@ const selfRemove = async (req: Request, res: Response): Promise<Response> => {
     group.members = group.members.filter((memberId) => memberId.toString() !== userId.toString());
     user.groups = user.groups.filter((groupDetails) => groupDetails.toString() !== groupId);
 
-    await group.save();
-    await user.save();
+    if (group.members.length === 0 || group.members.length < 1) {
+      groupSchema.findOneAndDelete({ _id: groupId });
+    }
 
-    return response(res, "Group removed successfully", 200);
+    if (group.members.length === 0) {
+      await groupSchema.findOneAndDelete({ _id: groupId });
+      return response(res, "You are removed from the group successfully!", 200);
+    } else {
+      await group.save();
+      await user.save();
+      return response(res, `You are removed from the group "${group.groupName}" successfully!`, 200);
+    }
   } catch (error) {
     return response(res, "Error while deleting group", 500, (error as Error).message);
   }
 };
 
-const deleteGroup = async (req: Request<GroupParams>, res: Response): Promise<Response> => {
+const deleteGroup = async (req: DeleteGroupRequest, res: Response): Promise<Response> => {
   try {
     const { groupId } = req.params;
     const adminId: Types.ObjectId = req.user?._id as Types.ObjectId;

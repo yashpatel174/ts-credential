@@ -23,7 +23,6 @@ const Group: FC<GroupProps> = ({ selectedUsers }) => {
       return;
     }
 
-    // Retrieve the token from session storage
     const token = sessionStorage.getItem("token");
     if (!token) {
       toast.error("User is not authenticated! Please log in.");
@@ -36,7 +35,6 @@ const Group: FC<GroupProps> = ({ selectedUsers }) => {
         members: selectedUsers.map((user) => user.userId),
       });
 
-      // Handle the API response
       if (!response || response.data.error) {
         toast.error("Group not created, please try again!");
       } else {
@@ -60,17 +58,19 @@ const Group: FC<GroupProps> = ({ selectedUsers }) => {
           <Form.Control
             type="text"
             value={groupName}
+            className="w-25"
             onChange={(e) => setGroupName(e.target.value)}
             required
           />
         </Form.Group>
 
-        <Form.Group controlId="formGroupMembers">
+        <Form.Group controlId="formGroupMembers mt-4">
           <Form.Label className="text-white">Members</Form.Label>
           {selectedUsers.map((user, index) => (
             <div
               key={index}
-              className="d-flex mb-2"
+              className="d-flex mb-2 text-center justify-content-sapce-between"
+              style={{ width: "10vw" }}
             >
               <span className="form-control">{user.userName}</span>
             </div>

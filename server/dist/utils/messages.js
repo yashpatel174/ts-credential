@@ -12,7 +12,7 @@ export const message = {
     logout_error: "Error while Logging out.",
     logout: "Logged out successfully!",
     logout_fail: "An error occurred during logout.",
-    link: "http://localhost:3000/reset-password/",
+    link: "http://192.168.1.227:3000/reset-password/",
     link_sent: "Link has been sent successfully!",
     mail_error: "error while sending mail!",
     password_required: "Password is required!",

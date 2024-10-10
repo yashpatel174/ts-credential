@@ -1,15 +1,15 @@
 import { FC, useEffect, useState, useRef } from "react";
 import { toast } from "react-toastify";
-import axios from "axios";
+import axios, { AxiosResponse } from "axios";
 import Group from "./Group";
-import { Link } from "react-router-dom";
 import { AiFillDelete } from "react-icons/ai";
+import UserData from "./UserData";
 
 interface Message {
   senderId: string;
   groupId?: string;
   receiverId?: string;
-  _id?: string;
+  _id: string;
   message: string;
   timestamp: string;
 }
@@ -21,6 +21,11 @@ interface SendMessagePayload {
   groupId?: string;
 }
 
+interface Grouper {
+  _id: string;
+  groupName: string;
+}
+
 const Dashboard: FC = () => {
   const [userName, setUserName] = useState<string>("");
   const [groupName, setGroupName] = useState<string>("");
@@ -28,21 +33,18 @@ const Dashboard: FC = () => {
   const [groups, setGroups] = useState<{ groupName: string; _id: string }[]>([]);
   const [selectedUser, setSelectedUser] = useState<{ userName: string; userId: string } | null>(null);
   const [selectedUsers, setSelectedUsers] = useState<{ userName: string; userId: string }[]>([]);
-  const [selectedGroup, setSelectedGroup] = useState<{ groupName: string; _id: string } | null>(null);
+  const [selectedGroup, setSelectedGroup] = useState<Grouper | null>(null);
+  const [selectedMessage, setSelectedMessage] = useState<Grouper | null>(null);
+  const [grouping, setGrouping] = useState<Grouper[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState<string>("");
   const [isGroup, setIsGroup] = useState<boolean>(false);
-  const [userData, setUserData] = useState<boolean>(false);
-  const [grouping, setGrouping] = useState("");
+  const [usersData, setUsersData] = useState<boolean>(false);
+  const [msgIcon, setMsgIcon] = useState<boolean>(false);
 
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const selectedName = selectedUser?.userName ?? selectedGroup?.groupName ?? "No user or group selected";
-  const linkDestination = selectedUser
-    ? `/about/${selectedUser.userId}`
-    : selectedGroup
-    ? `/about/${selectedGroup._id}`
-    : "";
 
   useEffect(() => {
     const fetchUsersAndGroups = async () => {
@@ -94,6 +96,7 @@ const Dashboard: FC = () => {
     setSelectedGroup(group);
     setSelectedId(group._id);
     loadChatMessages("", group._id);
+    setSelectedGroup(group);
   };
 
   const loadChatMessages = async (selectedUserId?: string, selectedGroupId?: string) => {
@@ -164,20 +167,17 @@ const Dashboard: FC = () => {
         return;
       }
 
-      console.log(payload, "payload");
-
       const response = await axios.post("http://localhost:8080/chat/send", payload, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
       const savedMessage = response.data;
 
-      console.log("Message sent:", savedMessage);
       setMessages((prevMessages) => [...prevMessages, savedMessage]);
       setNewMessage("");
       toast.success("Message sent!");
     } catch (error) {
-      console.error("Error sending message:", error);
+      console.error("Error sending message:", (error as Error).message);
       toast.error("Failed to send message.");
     }
   };
@@ -188,12 +188,17 @@ const Dashboard: FC = () => {
     setSelectedUser(null);
     setSelectedGroup(null);
   };
-
-  const toggleUserData = () => {
-    setUserData((prev) => !prev);
+  const toggleSMS = () => {
+    setMsgIcon((prev) => !prev);
   };
 
-  const handleDelete = async () => {
+  const toggleUser = () => {
+    console.log("selectedUser", selectedUser);
+
+    setUsersData((prev) => !prev);
+  };
+
+  const handleDeleteGroup = async (groupId: string): Promise<void> => {
     const token = sessionStorage.getItem("token");
     if (!token) {
       toast.error("Token not found");
@@ -201,14 +206,55 @@ const Dashboard: FC = () => {
     }
 
     try {
-      const response = await axios.delete("http://localhost:8080/group/delete", {
-        headers: { Authorization: `Bearer ${token}` },
-        data: { grouping },
-      });
-
+      const response: AxiosResponse<{ message: string }> = await axios.delete(
+        `http://localhost:8080/group/delete/${groupId}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
       toast.success(response.data.message);
-    } catch (error) {
-      toast.error((error as Error).message);
+      setGrouping(grouping.filter((group) => group._id !== groupId));
+      if (selectedGroup?._id === groupId) {
+        setSelectedGroup(null);
+      }
+    } catch (error: unknown) {
+      if (axios.isAxiosError(error)) {
+        toast.error(error.response?.data?.message || "Failed to delete group");
+      } else if (error instanceof Error) {
+        toast.error(error.message);
+      } else {
+        toast.error("An unknown error occurred");
+      }
+    }
+  };
+
+  const handleDeleteMessage = async (messageId: string): Promise<void> => {
+    const token = sessionStorage.getItem("token");
+    if (!token) {
+      toast.error("Token not found");
+      return;
+    }
+
+    try {
+      const response: AxiosResponse<{ message: string }> = await axios.delete(
+        `http://localhost:8080/chat/delete/${messageId}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      toast.success(response.data.message);
+      setGrouping(grouping.filter((message) => message._id !== messageId));
+      if (selectedMessage?._id === messageId) {
+        setSelectedMessage(null);
+      }
+    } catch (error: unknown) {
+      if (axios.isAxiosError(error)) {
+        toast.error(error.response?.data?.message || "Failed to delete group");
+      } else if (error instanceof Error) {
+        toast.error(error.message);
+      } else {
+        toast.error("An unknown error occurred");
+      }
     }
   };
 
@@ -272,22 +318,26 @@ const Dashboard: FC = () => {
         <div className="bg-black col-10 px-4">
           {isGroup ? (
             <Group selectedUsers={selectedUsers} />
+          ) : usersData ? (
+            <UserData userId={selectedUser?.userId as string} />
           ) : (
             <>
               <div className="d-flex justify-content-between align-items-start">
                 <h5 className="text-white p-3 mb-2">
-                  <Link
-                    className="text-white text-decoration-none"
-                    to={linkDestination}
+                  <button
+                    className="text-white text-decoration-none bg-black"
+                    onClick={toggleUser}
                   >
                     {selectedId ? `Chat with ${selectedName}` : `Chat with ${selectedName}`}
-                  </Link>
+                  </button>
                 </h5>
-                <AiFillDelete
-                  className="text-white mt-3"
-                  style={{ fontSize: "20px" }}
-                  onClick={() => handleDelete()}
-                />
+                {selectedGroup ? (
+                  <AiFillDelete
+                    className="text-white mt-3"
+                    style={{ fontSize: "20px" }}
+                    onClick={() => handleDeleteGroup(selectedGroup._id)}
+                  />
+                ) : null}
               </div>
               <div
                 className="max-vh-50 overflow-auto"
@@ -314,9 +364,17 @@ const Dashboard: FC = () => {
                           isUserMessage || isGroupMessage ? "bg-danger text-white" : "bg-light text-dark"
                         }`}
                         style={{ maxWidth: "75%", wordWrap: "break-word" }}
+                        onClick={toggleSMS}
                       >
                         <p className="mb-0">{msg.message}</p>
                       </div>
+                      {msgIcon ? (
+                        <AiFillDelete
+                          className="text-white d-flex justify-content-center align-items-center"
+                          style={{ fontSize: "20px" }}
+                          onClick={() => handleDeleteMessage(msg._id)}
+                        />
+                      ) : null}
                     </div>
                   );
                 })}

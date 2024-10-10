@@ -3,7 +3,11 @@ import groupSchema from "../model/groupModel.js";
 import http from "http";
 import app, { Request, Response } from "express";
 import { Chat } from "../model/chatModel.js";
-import { response } from "../utils/utils.js";
+import { required, response } from "../utils/utils.js";
+
+interface GroupQuery {
+  messageId?: string;
+}
 
 const server = http.createServer(app);
 
@@ -54,9 +58,27 @@ const userMessage = async (req: Request, res: Response): Promise<Response> => {
   }
 };
 
+const deleteMessage = async (req: Request, res: Response): Promise<Response> => {
+  try {
+    const { messageId } = req.params as GroupQuery;
+    required(res, { messageId });
+
+    const message = await Chat.findById({ _id: messageId });
+    if (!message) return response(res, "Message not found", 404);
+    console.log(message, "message");
+
+    await Chat.findOneAndDelete({ _id: messageId });
+
+    return response(res, "Message deleted successfully!", 200);
+  } catch (error) {
+    return response(res, "Error while deleting message", 500, (error as Error).message);
+  }
+};
+
 const groupMessage = async (req: Request, res: Response): Promise<Response> => {
   try {
     const { currentUserId, selectedGroupId } = req.params;
+    required(res, { currentUserId }, { selectedGroupId });
 
     const messages = await Chat.find({ senderId: currentUserId, groupId: selectedGroupId }).sort({ timeStamp: 1 });
     if (!messages || messages.length === 0) return response(res, "No data found", 404);
@@ -65,11 +87,7 @@ const groupMessage = async (req: Request, res: Response): Promise<Response> => {
     return response(res, "Messages retrieved successfully", 200, { messages });
   } catch (error) {
     console.log((error as Error).message);
-    return res.status(500).json({
-      success: false,
-      message: "Error while getting messages!",
-      error: (error as Error).message,
-    });
+    return response(res, "Error while getting messages!", 500, (error as Error).message);
   }
 };
 
@@ -107,4 +125,4 @@ const sendMessage = async (req: Request, res: Response): Promise<Response> => {
   }
 };
 
-export { userMessage, groupMessage, sendMessage };
+export { userMessage, groupMessage, sendMessage, deleteMessage };

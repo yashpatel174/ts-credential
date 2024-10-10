@@ -36,6 +36,10 @@ export interface CustomRequest extends Request {
   };
 }
 
+interface GroupQuery {
+  _id?: string;
+}
+
 interface UserRole extends Request {
   user?: {
     _id: Types.ObjectId;
@@ -122,15 +126,22 @@ const dashboard = async (req: CustomRequest, res: Response): Promise<Response> =
   }
 };
 
-const userDetails = async (req: UserRole, res: Response): Promise<Response> => {
+const userDetails = async (req: Request, res: Response): Promise<Response> => {
   try {
-    const { _id } = req.params;
+    const { _id } = req.query._id as GroupQuery;
     console.log(_id, "id of user");
 
     const user = await userSchema.findById(_id);
-    if (!user) return response(res, "Erorr while getting user information!", 500);
+    if (!user) {
+      return res.status(404).json({
+        error: "User not found",
+      });
+    }
 
-    return response(res, "User data fetched successfully!", 200, user);
+    return res.status(200).json({
+      message: "User data fetched successfully!",
+      result: user,
+    });
   } catch (error) {
     console.log((error as Error).message);
     return res.status(500).send({

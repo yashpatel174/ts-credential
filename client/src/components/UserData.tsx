@@ -1,6 +1,5 @@
 import axios from "axios";
 import React, { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 
 // Define the type for the user data structure
@@ -10,9 +9,11 @@ interface UserDataType {
   groups: string[];
 }
 
-const UserData: React.FC = () => {
-  const { _id } = useParams<{ _id: string }>();
+interface UserDataProps {
+  userId: string;
+}
 
+const UserData: React.FC<UserDataProps> = ({ userId }) => {
   const [name, setName] = useState<string | undefined>();
   const [email, setEmail] = useState<string | undefined>();
   const [groups, setGroups] = useState<string[]>([]);
@@ -26,7 +27,7 @@ const UserData: React.FC = () => {
           return;
         }
 
-        const response = await axios.get<{ result: UserDataType }>(`http://localhost:8080/user/details/${_id}`, {
+        const response = await axios.get<{ result: UserDataType }>(`http://localhost:8080/user/details/${userId}`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -43,10 +44,10 @@ const UserData: React.FC = () => {
       }
     };
 
-    if (_id) {
+    if (userId) {
       fetchData();
     }
-  }, [_id]);
+  }, [userId]);
 
   return (
     <div>

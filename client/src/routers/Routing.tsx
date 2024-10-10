@@ -44,10 +44,10 @@ const Routing: React.FC = () => {
             path="/dashboard"
             element={<Private element={<Dashboard />} />}
           />
-          <Route
+          {/* <Route
             path="/about/:_id"
             element={<Private element={<UserData />} />}
-          />
+          /> */}
           <Route
             path="*"
             element={<NoPage />}

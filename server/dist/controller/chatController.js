@@ -3,7 +3,7 @@ import groupSchema from "../model/groupModel.js";
 import http from "http";
 import app from "express";
 import { Chat } from "../model/chatModel.js";
-import { response } from "../utils/utils.js";
+import { required, response } from "../utils/utils.js";
 const server = http.createServer(app);
 const io = new Server(server, {
     cors: {
@@ -46,9 +46,25 @@ const userMessage = async (req, res) => {
         });
     }
 };
+const deleteMessage = async (req, res) => {
+    try {
+        const { messageId } = req.params;
+        required(res, { messageId });
+        const message = await Chat.findById({ _id: messageId });
+        if (!message)
+            return response(res, "Message not found", 404);
+        console.log(message, "message");
+        await Chat.findOneAndDelete({ _id: messageId });
+        return response(res, "Message deleted successfully!", 200);
+    }
+    catch (error) {
+        return response(res, "Error while deleting message", 500, error.message);
+    }
+};
 const groupMessage = async (req, res) => {
     try {
         const { currentUserId, selectedGroupId } = req.params;
+        required(res, { currentUserId }, { selectedGroupId });
         const messages = await Chat.find({ senderId: currentUserId, groupId: selectedGroupId }).sort({ timeStamp: 1 });
         if (!messages || messages.length === 0)
             return response(res, "No data found", 404);
@@ -57,11 +73,7 @@ const groupMessage = async (req, res) => {
     }
     catch (error) {
         console.log(error.message);
-        return res.status(500).json({
-            success: false,
-            message: "Error while getting messages!",
-            error: error.message,
-        });
+        return response(res, "Error while getting messages!", 500, error.message);
     }
 };
 const sendMessage = async (req, res) => {
@@ -97,4 +109,4 @@ const sendMessage = async (req, res) => {
         });
     }
 };
-export { userMessage, groupMessage, sendMessage };
+export { userMessage, groupMessage, sendMessage, deleteMessage };
