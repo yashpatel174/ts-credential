@@ -4,6 +4,7 @@ import axios, { AxiosResponse } from "axios";
 import Group from "./Group";
 import { AiFillDelete } from "react-icons/ai";
 import UserData from "./UserData";
+import GroupData from "./GroupData";
 
 interface Message {
   senderId: string;
@@ -19,6 +20,7 @@ interface SendMessagePayload {
   receiverId?: string;
   message: string;
   groupId?: string;
+  sender: boolean;
 }
 
 interface Grouper {
@@ -41,6 +43,7 @@ const Dashboard: FC = () => {
   const [newMessage, setNewMessage] = useState<string>("");
   const [isGroup, setIsGroup] = useState<boolean>(false);
   const [usersData, setUsersData] = useState<boolean>(false);
+  const [groupsData, setGroupsData] = useState<boolean>(false);
   const [msgIcon, setMsgIcon] = useState<boolean>(false);
 
   const chatContainerRef = useRef<HTMLDivElement>(null);
@@ -157,6 +160,7 @@ const Dashboard: FC = () => {
       const payload: SendMessagePayload = {
         senderId: currentUserId,
         message: newMessage,
+        sender: true,
         ...(selectedGroup ? { groupId: selectedGroup._id } : {}),
         ...(selectedUser ? { receiverId: selectedUser.userId } : {}),
       };
@@ -187,15 +191,16 @@ const Dashboard: FC = () => {
     setSelectedId(null);
     setSelectedUser(null);
     setSelectedGroup(null);
+    setGroupsData((prev) => !prev);
+    setUsersData(false);
   };
   const toggleSMS = () => {
     setMsgIcon((prev) => !prev);
   };
 
   const toggleUser = () => {
-    console.log("selectedUser", selectedUser);
-
     setUsersData((prev) => !prev);
+    setGroupsData(false);
   };
 
   const handleDeleteGroup = async (groupId: string): Promise<void> => {
@@ -281,7 +286,7 @@ const Dashboard: FC = () => {
           </button>
         </div>
       </div>
-      <div className="row min-vh-75">
+      <div className="row min-vh-75 m-0">
         <div className="col-2 bg-black text-white px-4">
           <h1 className="text-center my-2">Users</h1>
           <ul className="list-unstyled">
@@ -315,17 +320,19 @@ const Dashboard: FC = () => {
             </>
           )}
         </div>
-        <div className="bg-black col-10 px-4">
+        <div className="bg-black col-10 px-4 max-vh-50">
           {isGroup ? (
             <Group selectedUsers={selectedUsers} />
           ) : usersData ? (
             <UserData userId={selectedUser?.userId as string} />
+          ) : groupsData ? (
+            <GroupData _id={selectedGroup?._id as string} />
           ) : (
             <>
               <div className="d-flex justify-content-between align-items-start">
                 <h5 className="text-white p-3 mb-2">
                   <button
-                    className="text-white text-decoration-none bg-black"
+                    className="text-white text-decoration-none bg-black border-0"
                     onClick={toggleUser}
                   >
                     {selectedId ? `Chat with ${selectedName}` : `Chat with ${selectedName}`}
@@ -340,30 +347,41 @@ const Dashboard: FC = () => {
                 ) : null}
               </div>
               <div
-                className="max-vh-50 overflow-auto"
+                className="overflow-auto mb-2"
                 style={{ height: "50vh" }}
                 ref={chatContainerRef}
               >
-                {messages.map((msg, idx) => {
+                {messages.map((msg: any, idx) => {
                   if (!msg || !msg.senderId) {
+                    console.log(msg);
+
                     return null;
                   }
+                  console.log("msg", msg);
 
                   const currentUser = users.find((u) => u.userName === userName);
                   const currentGroup = groups.find((g) => g.groupName === groupName);
                   const isUserMessage = msg.senderId === currentUser?.userId;
                   const isGroupMessage = msg.senderId === currentGroup?._id;
+                  const messageStyle: any = {
+                    padding: "0.5rem",
+                    borderRadius: "0.25rem",
+                    backgroundColor: isUserMessage || isGroupMessage ? "white" : "#ff803e",
+                    color: isUserMessage || isGroupMessage ? "dark" : "#ff803e",
+                    maxWidth: "75%",
+                    wordWrap: "break-word",
+                  };
 
                   return (
                     <div
                       key={idx}
-                      className={`mb-2 d-flex ${isUserMessage ? "justify-content-end" : "justify-content-start"}`}
+                      className={`mb-2 d-flex ${msg.sender ? "justify-content-end" : "justify-content-start"}`}
                     >
                       <div
                         className={`p-2 rounded ${
                           isUserMessage || isGroupMessage ? "bg-danger text-white" : "bg-light text-dark"
                         }`}
-                        style={{ maxWidth: "75%", wordWrap: "break-word" }}
+                        style={messageStyle}
                         onClick={toggleSMS}
                       >
                         <p className="mb-0">{msg.message}</p>

@@ -33,6 +33,9 @@ const Login: FC = () => {
     if (!password.trim()) {
       return toast.error("Password is required!");
     }
+    if (!validateEmail) {
+      return toast.error("Invalid Email!");
+    }
 
     try {
       const response = await axios.post("http://localhost:8080/user/login", { userName, password });

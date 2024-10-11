@@ -128,10 +128,9 @@ const dashboard = async (req: CustomRequest, res: Response): Promise<Response> =
 
 const userDetails = async (req: Request, res: Response): Promise<Response> => {
   try {
-    const { _id } = req.query._id as GroupQuery;
-    console.log(_id, "id of user");
+    const { _id } = req.params;
 
-    const user = await userSchema.findById(_id);
+    const user = await userSchema.findById(_id).populate("groups");
     if (!user) {
       return res.status(404).json({
         error: "User not found",

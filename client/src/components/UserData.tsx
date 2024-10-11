@@ -2,21 +2,21 @@ import axios from "axios";
 import React, { useEffect, useState } from "react";
 import { toast } from "react-toastify";
 
-// Define the type for the user data structure
-interface UserDataType {
-  userName: string;
-  email: string;
-  groups: string[];
-}
-
 interface UserDataProps {
   userId: string;
+}
+
+interface Group {
+  _id: string;
+  groupName: string;
+  members: string[];
+  admin: string;
 }
 
 const UserData: React.FC<UserDataProps> = ({ userId }) => {
   const [name, setName] = useState<string | undefined>();
   const [email, setEmail] = useState<string | undefined>();
-  const [groups, setGroups] = useState<string[]>([]);
+  const [groups, setGroups] = useState<Group[]>([]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -27,10 +27,8 @@ const UserData: React.FC<UserDataProps> = ({ userId }) => {
           return;
         }
 
-        const response = await axios.get<{ result: UserDataType }>(`http://localhost:8080/user/details/${userId}`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+        const response = await axios.get(`http://localhost:8080/user/details/${userId}`, {
+          headers: { Authorization: `Bearer ${token}` },
         });
 
         const result = response.data.result;
@@ -49,18 +47,37 @@ const UserData: React.FC<UserDataProps> = ({ userId }) => {
     }
   }, [userId]);
 
+  const openGmail = () => {
+    window.open(`https://mail.google.com/mail/?view=cm&fs=1&to=${email}`, "_blank");
+  };
+
   return (
-    <div>
+    <div
+      className="container max-vh-50"
+      style={{ height: "76vh", color: "#ff803d" }}
+    >
       {name || email || groups.length > 0 ? (
         <>
-          <h1 className="d-flex justify-content-center align-items-center">{name}</h1>
+          <h1 className="mt-2 text-white">{name}</h1>
           <div>
-            <h1>UserName: {name}</h1>
-            <p>Email: {email}</p>
-            <h3>Groups:</h3>
-            {groups?.map((g, index) => (
-              <p key={index}>{g}</p>
-            ))}
+            <h1>
+              <span className="text-white">UserName:</span> {name}
+            </h1>
+            <h3>
+              <span className="text-white">Email Id:</span> <span onClick={openGmail}>{email}</span>
+            </h3>
+            <h3 className="text-white">Groups:</h3>
+            <ul className="list-unstyled">
+              {groups?.map((g) => (
+                <li
+                  key={g._id}
+                  className="border rounded shadow-sm mb-2 p-2 text-center text-white"
+                  style={{ backgroundColor: "#ff803e", cursor: "pointer", width: "10%" }}
+                >
+                  {g.groupName}
+                </li>
+              ))}
+            </ul>
           </div>
         </>
       ) : (

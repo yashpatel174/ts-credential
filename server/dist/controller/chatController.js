@@ -36,6 +36,15 @@ const userMessage = async (req, res) => {
                 { senderId: selectedUserId, receiverId: currentUserId },
             ],
         }).sort({ timeStampo: 1 });
+        messages.forEach((message) => {
+            if ((message.senderId.toString(), message.senderId.toString() === currentUserId.toString())) {
+                console.log(currentUserId, "currentUserId");
+                message.sender = true;
+            }
+            else {
+                message.sender = false;
+            }
+        });
         return response(res, "Messages retrieved successfully", 200, { messages });
     }
     catch (error) {

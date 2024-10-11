@@ -11,7 +11,6 @@ import Dashboard from "../components/Dashboard";
 import NoPage from "../components/NoPage";
 import Private from "../components/Private";
 import ForgotPassword from "../components/ForgotPassword";
-import UserData from "../components/UserData";
 
 const Routing: React.FC = () => {
   return (
@@ -44,10 +43,6 @@ const Routing: React.FC = () => {
             path="/dashboard"
             element={<Private element={<Dashboard />} />}
           />
-          {/* <Route
-            path="/about/:_id"
-            element={<Private element={<UserData />} />}
-          /> */}
           <Route
             path="*"
             element={<NoPage />}

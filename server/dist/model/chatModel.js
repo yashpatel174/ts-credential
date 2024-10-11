@@ -5,5 +5,6 @@ const chatSchema = new Schema({
     receiverId: { type: Schema.Types.ObjectId, ref: "User" },
     message: { type: String, required: true },
     timeStamp: { type: Date, default: Date.now },
+    sender: { type: Boolean, default: false },
 });
 export const Chat = model("Chat", chatSchema);

@@ -47,13 +47,16 @@ const Group: FC<GroupProps> = ({ selectedUsers }) => {
   };
 
   return (
-    <div className="container">
-      <h1 className="text-white">Group Management</h1>
+    <div
+      className="container max-vh-50 overflow-auto"
+      style={{ height: "76vh" }}
+    >
+      <h1 className="text-white mt-2">Group Management</h1>
       <Form
         onSubmit={handleCreateGroup}
         className="mb-4"
       >
-        <Form.Group controlId="formGroupName">
+        <Form.Group controlId="formGroupName max-w-50 overflow-auto">
           <Form.Label className="text-white">Group Name</Form.Label>
           <Form.Control
             type="text"

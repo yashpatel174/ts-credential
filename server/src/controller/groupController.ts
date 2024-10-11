@@ -144,9 +144,8 @@ const createGroup = async (req: Request, res: Response): Promise<Response> => {
 const groupDetails = async (req: GroupRole, res: Response): Promise<Response> => {
   try {
     const { _id } = req.params;
-    console.log(_id, "id of user");
 
-    const group = await groupSchema.findById(_id);
+    const group = await groupSchema.findById(_id).populate("members");
     if (!group) return response(res, "Erorr while getting group information!", 500);
 
     return response(res, "User data fetched successfully!", 200, group);

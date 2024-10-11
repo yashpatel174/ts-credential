@@ -76,9 +76,8 @@ const dashboard = async (req, res) => {
 };
 const userDetails = async (req, res) => {
     try {
-        const { _id } = req.query._id;
-        console.log(_id, "id of user");
-        const user = await userSchema.findById(_id);
+        const { _id } = req.params;
+        const user = await userSchema.findById(_id).populate("groups");
         if (!user) {
             return res.status(404).json({
                 error: "User not found",

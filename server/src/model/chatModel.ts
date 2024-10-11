@@ -6,6 +6,7 @@ interface ChatDocument extends Document {
   receiverId: Schema.Types.ObjectId;
   message: string;
   timeStamp: Date;
+  sender: boolean;
 }
 
 const chatSchema = new Schema<ChatDocument>({
@@ -14,6 +15,7 @@ const chatSchema = new Schema<ChatDocument>({
   receiverId: { type: Schema.Types.ObjectId, ref: "User" },
   message: { type: String, required: true },
   timeStamp: { type: Date, default: Date.now },
+  sender: { type: Boolean, default: false },
 });
 
 export const Chat = model<ChatDocument>("Chat", chatSchema);
