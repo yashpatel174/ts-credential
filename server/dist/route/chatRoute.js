@@ -1,9 +1,9 @@
 import express from "express";
-import { groupMessage, sendMessage, userMessage, deleteMessage } from "../controller/chatController.js";
+import { sendMessage, messageHandler, deleteMessage, details } from "../controller/chatController.js";
 import { authMiddleware } from "../middleware/authMiddleware.js";
 const router = express.Router();
-router.get("/:currentUserId/:selectedUserId", authMiddleware, userMessage);
-router.get("/:currentUserId/:selectedGroupId", authMiddleware, groupMessage);
+router.get("/:currentUserId/:type/:selectedId", authMiddleware, messageHandler);
+router.get("/:type/:_id", authMiddleware, details);
 router.post("/send", authMiddleware, sendMessage);
-router.delete("/delete/:messageId", authMiddleware, deleteMessage);
+router.delete("/delete/:messageId/:senderId", authMiddleware, deleteMessage);
 export default router;

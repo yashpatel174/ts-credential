@@ -27,11 +27,11 @@ const UserData: React.FC<UserDataProps> = ({ userId }) => {
           return;
         }
 
-        const response = await axios.get(`http://localhost:8080/user/details/${userId}`, {
+        const response = await axios.get(`http://localhost:8080/chat/user/${userId}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
 
-        const result = response.data.result;
+        const result = response.data.result.user;
         console.log(result, "Result");
 
         setName(result?.userName);
@@ -47,16 +47,12 @@ const UserData: React.FC<UserDataProps> = ({ userId }) => {
     }
   }, [userId]);
 
-  const openGmail = () => {
-    window.open(`https://mail.google.com/mail/?view=cm&fs=1&to=${email}`, "_blank");
-  };
-
   return (
     <div
       className="container max-vh-50"
       style={{ height: "76vh", color: "#ff803d" }}
     >
-      {name || email || groups.length > 0 ? (
+      {name || email ? (
         <>
           <h1 className="mt-2 text-white">{name}</h1>
           <div>
@@ -64,15 +60,15 @@ const UserData: React.FC<UserDataProps> = ({ userId }) => {
               <span className="text-white">UserName:</span> {name}
             </h1>
             <h3>
-              <span className="text-white">Email Id:</span> <span onClick={openGmail}>{email}</span>
+              <span className="text-white">Email Id:</span> {email}
             </h3>
             <h3 className="text-white">Groups:</h3>
             <ul className="list-unstyled">
               {groups?.map((g) => (
                 <li
                   key={g._id}
-                  className="border rounded shadow-sm mb-2 p-2 text-center text-white"
-                  style={{ backgroundColor: "#ff803e", cursor: "pointer", width: "10%" }}
+                  className="border rounded shadow-sm mb-2 p-2 text-center text-white w-25"
+                  style={{ backgroundColor: "#ff803e", cursor: "pointer" }}
                 >
                   {g.groupName}
                 </li>

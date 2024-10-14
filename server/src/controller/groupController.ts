@@ -93,8 +93,6 @@ const createGroup = async (req: Request, res: Response): Promise<Response> => {
       return res.status(404).json({ message: "Users not found" });
     }
 
-    console.log(flattenedMembers, "Found users:", users);
-
     const memberIds = users.map((user) => user._id);
 
     const existingGroup: IGroups | null = await groupSchema.findOne({ groupName });
@@ -114,9 +112,8 @@ const createGroup = async (req: Request, res: Response): Promise<Response> => {
     await newGroup.save();
 
     const user: IUsers | null = await userModel.findById(userId);
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
+    if (!user) return response(res, "User not found", 404);
+
     user.groups?.push(newGroup._id as Types.ObjectId);
     await user.save();
 
@@ -159,13 +156,11 @@ const groupDetails = async (req: GroupRole, res: Response): Promise<Response> =>
 
 const addUser = async (req: Request, res: Response): Promise<Response> => {
   try {
-    const { groupId, userId }: { groupId: Types.ObjectId; userId: Types.ObjectId } = req.body;
+    const { _id, userId }: { _id: Types.ObjectId; userId: Types.ObjectId } = req.body;
     const adminId: Types.ObjectId = req.user?._id as Types.ObjectId;
 
-    const group: IGroups | null = await groupSchema.findById(groupId);
-    if (!group) {
-      return res.status(404).json({ message: "Group not found." });
-    }
+    const group: IGroups | null = await groupSchema.findById(_id);
+    if (!group) return response(res, "Group not found", 404);
 
     if (group.admin.toString() !== adminId.toString()) {
       return response(res, "Only the admin can add members", 403);
@@ -180,7 +175,7 @@ const addUser = async (req: Request, res: Response): Promise<Response> => {
       group.members?.push(user._id as Types.ObjectId);
       await group.save();
 
-      user.groups?.push(groupId);
+      user.groups?.push(_id);
       await user.save();
     }
 
@@ -221,6 +216,11 @@ const selfRemove = async (req: Request, res: Response): Promise<Response> => {
     const { groupId } = req.params as GroupQuery;
     console.log(groupId);
     console.log(req.body);
+
+    if (!groupId || !Types.ObjectId.isValid(groupId)) {
+      return res.status(400).json({ message: "Invalid or missing groupId" });
+    }
+
     const userId: Types.ObjectId = req.user?._id as Types.ObjectId;
 
     const group: IGroups | null = await groupSchema.findOne({ _id: groupId });
@@ -246,6 +246,7 @@ const selfRemove = async (req: Request, res: Response): Promise<Response> => {
       return response(res, `You are removed from the group "${group.groupName}" successfully!`, 200);
     }
   } catch (error) {
+    console.log((error as Error).message);
     return response(res, "Error while deleting group", 500, (error as Error).message);
   }
 };

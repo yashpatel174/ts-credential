@@ -1,4 +1,4 @@
-import { FC, useEffect, useState, useRef } from "react";
+import { FC, useEffect, useState, useRef, MouseEvent } from "react";
 import { toast } from "react-toastify";
 import axios, { AxiosResponse } from "axios";
 import Group from "./Group";
@@ -35,7 +35,7 @@ const Dashboard: FC = () => {
   const [groups, setGroups] = useState<{ groupName: string; _id: string }[]>([]);
   const [selectedUser, setSelectedUser] = useState<{ userName: string; userId: string } | null>(null);
   const [selectedUsers, setSelectedUsers] = useState<{ userName: string; userId: string }[]>([]);
-  const [selectedGroup, setSelectedGroup] = useState<Grouper | null>(null);
+  const [selectedGroup, setSelectedGroup] = useState<{ groupName: string; groupId: string; _id: string } | null>(null);
   const [selectedMessage, setSelectedMessage] = useState<Grouper | null>(null);
   const [grouping, setGrouping] = useState<Grouper[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -99,7 +99,6 @@ const Dashboard: FC = () => {
     setSelectedGroup(group);
     setSelectedId(group._id);
     loadChatMessages("", group._id);
-    setSelectedGroup(group);
   };
 
   const loadChatMessages = async (selectedUserId?: string, selectedGroupId?: string) => {
@@ -122,12 +121,12 @@ const Dashboard: FC = () => {
 
       const currentUserId = currentUser.userId;
 
-      const response = await axios.get(
-        `http://localhost:8080/chat/${currentUserId}/${selectedUserId ? selectedUserId : selectedGroupId}`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
+      const type = selectedUserId ? "user" : "group";
+      const selectedId = selectedUserId || selectedGroupId;
+
+      const response = await axios.get(`http://localhost:8080/chat/${currentUserId}/${type}/${selectedId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
       setMessages(response.data.result.messages);
     } catch (error) {
@@ -161,7 +160,7 @@ const Dashboard: FC = () => {
         senderId: currentUserId,
         message: newMessage,
         sender: true,
-        ...(selectedGroup ? { groupId: selectedGroup._id } : {}),
+        ...(selectedGroup ? { groupId: selectedGroup.groupId } : {}),
         ...(selectedUser ? { receiverId: selectedUser.userId } : {}),
       };
 
@@ -194,13 +193,20 @@ const Dashboard: FC = () => {
     setGroupsData((prev) => !prev);
     setUsersData(false);
   };
+
   const toggleSMS = () => {
     setMsgIcon((prev) => !prev);
   };
 
-  const toggleUser = () => {
-    setUsersData((prev) => !prev);
-    setGroupsData(false);
+  const toggleData = (e: MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault();
+    if (selectedUser) {
+      setUsersData((prev) => !prev);
+      setGroupsData(false);
+    } else if (selectedGroup) {
+      setGroupsData((prev) => !prev);
+      setUsersData(false);
+    }
   };
 
   const handleDeleteGroup = async (groupId: string): Promise<void> => {
@@ -211,6 +217,7 @@ const Dashboard: FC = () => {
     }
 
     try {
+      console.log(groupId);
       const response: AxiosResponse<{ message: string }> = await axios.delete(
         `http://localhost:8080/group/delete/${groupId}`,
         {
@@ -219,7 +226,7 @@ const Dashboard: FC = () => {
       );
       toast.success(response.data.message);
       setGrouping(grouping.filter((group) => group._id !== groupId));
-      if (selectedGroup?._id === groupId) {
+      if (selectedGroup?.groupId === groupId) {
         setSelectedGroup(null);
       }
     } catch (error: unknown) {
@@ -233,7 +240,7 @@ const Dashboard: FC = () => {
     }
   };
 
-  const handleDeleteMessage = async (messageId: string): Promise<void> => {
+  const handleDeleteMessage = async (messageId: string, userId: string): Promise<void> => {
     const token = sessionStorage.getItem("token");
     if (!token) {
       toast.error("Token not found");
@@ -242,7 +249,7 @@ const Dashboard: FC = () => {
 
     try {
       const response: AxiosResponse<{ message: string }> = await axios.delete(
-        `http://localhost:8080/chat/delete/${messageId}`,
+        `http://localhost:8080/chat/delete/${messageId}/${userId}`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -323,26 +330,29 @@ const Dashboard: FC = () => {
         <div className="bg-black col-10 px-4 max-vh-50">
           {isGroup ? (
             <Group selectedUsers={selectedUsers} />
-          ) : usersData ? (
+          ) : usersData && selectedUser ? (
             <UserData userId={selectedUser?.userId as string} />
-          ) : groupsData ? (
-            <GroupData _id={selectedGroup?._id as string} />
+          ) : groupsData && selectedGroup ? (
+            <GroupData
+              groupId={selectedGroup?._id as string}
+              selectedUsers={selectedUsers}
+            />
           ) : (
             <>
               <div className="d-flex justify-content-between align-items-start">
                 <h5 className="text-white p-3 mb-2">
                   <button
                     className="text-white text-decoration-none bg-black border-0"
-                    onClick={toggleUser}
+                    onClick={toggleData}
                   >
-                    {selectedId ? `Chat with ${selectedName}` : `Chat with ${selectedName}`}
+                    {selectedName ? `Chat with ${selectedName}` : "Select a user or group"}
                   </button>
                 </h5>
                 {selectedGroup ? (
                   <AiFillDelete
                     className="text-white mt-3"
                     style={{ fontSize: "20px" }}
-                    onClick={() => handleDeleteGroup(selectedGroup._id)}
+                    onClick={() => handleDeleteGroup(selectedGroup?.groupId)}
                   />
                 ) : null}
               </div>
@@ -357,7 +367,6 @@ const Dashboard: FC = () => {
 
                     return null;
                   }
-                  console.log("msg", msg);
 
                   const currentUser = users.find((u) => u.userName === userName);
                   const currentGroup = groups.find((g) => g.groupName === groupName);
@@ -386,11 +395,11 @@ const Dashboard: FC = () => {
                       >
                         <p className="mb-0">{msg.message}</p>
                       </div>
-                      {msgIcon ? (
+                      {msgIcon && msg.sender ? (
                         <AiFillDelete
-                          className="text-white d-flex justify-content-center align-items-center"
-                          style={{ fontSize: "20px" }}
-                          onClick={() => handleDeleteMessage(msg._id)}
+                          className="text-white mt-2 "
+                          style={{ fontSize: "20px", marginLeft: "5px" }}
+                          onClick={() => handleDeleteMessage(msg._id, msg.senderId)}
                         />
                       ) : null}
                     </div>

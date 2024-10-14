@@ -5,7 +5,6 @@ export interface IUsers extends Document {
   userName: string;
   email: string;
   password: string;
-  role: "user" | "admin";
   resetToken?: string;
   resetTokenExpiration?: Date;
   groups: Types.ObjectId[];
@@ -26,11 +25,6 @@ const userSchema = new Schema<IUsers>({
     type: String,
     required: true,
     unique: true,
-  },
-  role: {
-    type: String,
-    enum: ["user", "admin"],
-    default: "user",
   },
   groups: {
     type: [Schema.Types.ObjectId],

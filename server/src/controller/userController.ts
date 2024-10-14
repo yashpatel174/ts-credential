@@ -36,18 +36,6 @@ export interface CustomRequest extends Request {
   };
 }
 
-interface GroupQuery {
-  _id?: string;
-}
-
-interface UserRole extends Request {
-  user?: {
-    _id: Types.ObjectId;
-    userName: string;
-    role: string;
-  };
-}
-
 const smtpHost: string = process.env.SMTP_HOST as string;
 const smtpPort: number = parseInt(process.env.SMTP_PORT as string, 10);
 const smtpSecure: boolean = process.env.SMTP_SECURE === "true";

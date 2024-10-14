@@ -1,5 +1,6 @@
 import { Server } from "socket.io";
 import groupSchema from "../model/groupModel.js";
+import userSchema from "../model/userModel.js";
 import http from "http";
 import app from "express";
 import { Chat } from "../model/chatModel.js";
@@ -27,15 +28,24 @@ io.on("connection", (socket) => {
 server.listen(5000, () => {
     console.log("Server is running on port 5000");
 });
-const userMessage = async (req, res) => {
+const messageHandler = async (req, res) => {
     try {
-        const { currentUserId, selectedUserId } = req.params;
-        const messages = await Chat.find({
-            $or: [
-                { senderId: currentUserId, receiverId: selectedUserId },
-                { senderId: selectedUserId, receiverId: currentUserId },
-            ],
-        }).sort({ timeStampo: 1 });
+        const { currentUserId, type, selectedId } = req.params;
+        let messages;
+        if (type === "user") {
+            messages = await Chat.find({
+                $or: [
+                    { senderId: currentUserId, receiverId: selectedId },
+                    { senderId: selectedId, receiverId: currentUserId },
+                ],
+            }).sort({ timeStampo: 1 });
+        }
+        else if (type === "group") {
+            messages = await Chat.find({ senderId: currentUserId, groupId: selectedId });
+        }
+        else {
+            return response(res, "Message not found", 404);
+        }
         messages.forEach((message) => {
             if ((message.senderId.toString(), message.senderId.toString() === currentUserId.toString())) {
                 console.log(currentUserId, "currentUserId");
@@ -45,44 +55,47 @@ const userMessage = async (req, res) => {
                 message.sender = false;
             }
         });
-        return response(res, "Messages retrieved successfully", 200, { messages });
+        return response(res, "Messages received successfully!", 200, { messages });
     }
     catch (error) {
-        return res.status(500).send({
-            success: false,
-            message: "Error while getting messages!",
-            error: error.message,
-        });
+        return response(res, "Error while fetching data", 500, error.message);
+    }
+};
+const details = async (req, res) => {
+    try {
+        const { _id, type } = req.params;
+        let user;
+        if (type === "user") {
+            user = await userSchema.findById(_id).populate("groups");
+            if (!user)
+                response(res, "User not found", 404);
+        }
+        else if (type === "group") {
+            user = await groupSchema.findById(_id).populate("admin members");
+        }
+        else {
+            response(res, "No data found", 404);
+        }
+        return response(res, "Data received successfully", 200, { user });
+    }
+    catch (error) {
+        return response(res, "Error while getting data", 500, error.message);
     }
 };
 const deleteMessage = async (req, res) => {
     try {
-        const { messageId } = req.params;
-        required(res, { messageId });
-        const message = await Chat.findById({ _id: messageId });
+        const { messageId, senderId } = req.params;
+        required(res, { messageId }, { senderId });
+        const userId = req.user._id;
+        const message = await Chat.findOne({ _id: messageId, senderId: userId });
         if (!message)
             return response(res, "Message not found", 404);
         console.log(message, "message");
-        await Chat.findOneAndDelete({ _id: messageId });
+        await Chat.findOneAndDelete({ _id: message._id });
         return response(res, "Message deleted successfully!", 200);
     }
     catch (error) {
         return response(res, "Error while deleting message", 500, error.message);
-    }
-};
-const groupMessage = async (req, res) => {
-    try {
-        const { currentUserId, selectedGroupId } = req.params;
-        required(res, { currentUserId }, { selectedGroupId });
-        const messages = await Chat.find({ senderId: currentUserId, groupId: selectedGroupId }).sort({ timeStamp: 1 });
-        if (!messages || messages.length === 0)
-            return response(res, "No data found", 404);
-        console.log(messages, "messages log in backend");
-        return response(res, "Messages retrieved successfully", 200, { messages });
-    }
-    catch (error) {
-        console.log(error.message);
-        return response(res, "Error while getting messages!", 500, error.message);
     }
 };
 const sendMessage = async (req, res) => {
@@ -118,4 +131,4 @@ const sendMessage = async (req, res) => {
         });
     }
 };
-export { userMessage, groupMessage, sendMessage, deleteMessage };
+export { messageHandler, sendMessage, deleteMessage, details };

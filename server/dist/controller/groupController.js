@@ -54,7 +54,6 @@ const createGroup = async (req, res) => {
         if (!users || users.length === 0) {
             return res.status(404).json({ message: "Users not found" });
         }
-        console.log(flattenedMembers, "Found users:", users);
         const memberIds = users.map((user) => user._id);
         const existingGroup = await groupSchema.findOne({ groupName });
         if (existingGroup) {
@@ -70,9 +69,8 @@ const createGroup = async (req, res) => {
         });
         await newGroup.save();
         const user = await userModel.findById(userId);
-        if (!user) {
-            return res.status(404).json({ message: "User not found" });
-        }
+        if (!user)
+            return response(res, "User not found", 404);
         user.groups?.push(newGroup._id);
         await user.save();
         await Promise.all(memberIds.map(async (m) => {
@@ -111,12 +109,11 @@ const groupDetails = async (req, res) => {
 };
 const addUser = async (req, res) => {
     try {
-        const { groupId, userId } = req.body;
+        const { _id, userId } = req.body;
         const adminId = req.user?._id;
-        const group = await groupSchema.findById(groupId);
-        if (!group) {
-            return res.status(404).json({ message: "Group not found." });
-        }
+        const group = await groupSchema.findById(_id);
+        if (!group)
+            return response(res, "Group not found", 404);
         if (group.admin.toString() !== adminId.toString()) {
             return response(res, "Only the admin can add members", 403);
         }
@@ -127,7 +124,7 @@ const addUser = async (req, res) => {
         if (!group.members?.includes(user._id)) {
             group.members?.push(user._id);
             await group.save();
-            user.groups?.push(groupId);
+            user.groups?.push(_id);
             await user.save();
         }
         return response(res, "User added to the group", 200, group);
@@ -164,6 +161,9 @@ const selfRemove = async (req, res) => {
         const { groupId } = req.params;
         console.log(groupId);
         console.log(req.body);
+        if (!groupId || !Types.ObjectId.isValid(groupId)) {
+            return res.status(400).json({ message: "Invalid or missing groupId" });
+        }
         const userId = req.user?._id;
         const group = await groupSchema.findOne({ _id: groupId });
         console.log(group);
@@ -188,6 +188,7 @@ const selfRemove = async (req, res) => {
         }
     }
     catch (error) {
+        console.log(error.message);
         return response(res, "Error while deleting group", 500, error.message);
     }
 };
