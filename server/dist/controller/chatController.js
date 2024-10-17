@@ -48,7 +48,6 @@ const messageHandler = async (req, res) => {
         }
         messages.forEach((message) => {
             if ((message.senderId.toString(), message.senderId.toString() === currentUserId.toString())) {
-                console.log(currentUserId, "currentUserId");
                 message.sender = true;
             }
             else {
@@ -111,6 +110,7 @@ const sendMessage = async (req, res) => {
                 groupId,
                 message,
             });
+            console.log(groupId, "sending to group");
             newMessage = await groupMessage.save();
         }
         else {

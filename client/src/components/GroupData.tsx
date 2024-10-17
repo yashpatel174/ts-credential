@@ -1,12 +1,14 @@
 import axios from "axios";
-import React, { FormEvent, useEffect, useState } from "react";
+import React, { FC, FormEvent, useEffect, useState } from "react";
 import { AiFillDelete } from "react-icons/ai";
 import { toast } from "react-toastify";
-import { addUser } from "../api";
+import { Button, Form } from "react-bootstrap";
+import { addUser, removeUser } from "../api";
 
 interface User {
   userName: string;
   userId: string;
+  _id?: string;
 }
 
 interface UserDataProps {
@@ -24,9 +26,9 @@ interface Group {
 
 const GroupData: React.FC<UserDataProps> = ({ groupId, selectedUsers }) => {
   const [name, setName] = useState<string | undefined>();
-  const [members, setMembers] = useState<Group[]>([]);
-  const [id, setId] = useState<string>("");
+  const [member, setMember] = useState<User[]>([]);
   const [admin, setAdmin] = useState<string>("");
+  const [users, setUsers] = useState<User[]>([]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -42,10 +44,10 @@ const GroupData: React.FC<UserDataProps> = ({ groupId, selectedUsers }) => {
         });
 
         const result = response.data.result.user;
-        setId(result._id);
         setName(result?.groupName);
-        setMembers(result?.members);
+        setMember(result?.members);
         setAdmin(result?.admin?.userName);
+        setUsers(selectedUsers);
       } catch (error) {
         console.log((error as Error).message);
       }
@@ -54,31 +56,47 @@ const GroupData: React.FC<UserDataProps> = ({ groupId, selectedUsers }) => {
     if (groupId) {
       fetchData();
     }
-  }, [groupId]);
-
-  const isAdmin = admin === sessionStorage.getItem("userName");
+  }, [groupId, selectedUsers]);
 
   const handleAddUsers = async (e: FormEvent) => {
     e.preventDefault();
 
-    const token = sessionStorage.getItem("token");
-    if (!token) {
-      toast.error("User is not authenticated! Please log in.");
+    // Filter out already existing members
+    const newUsers = selectedUsers.filter(
+      (selectedUser) => !member.some((existingMember) => existingMember.userId === selectedUser.userId)
+    );
+
+    if (newUsers.length === 0) {
+      toast.info("No new users to add.");
       return;
     }
 
     try {
-      // const response = await addUser({
-      //   groupId,
-      //   members,
-      // });
-      // if (!response || response.data.error) {
-      //   toast.error("Group not created, please try again!");
-      // } else {
-      //   toast.success("Group created successfully!");
-      // }
+      const response = await addUser({
+        groupId,
+        members: newUsers.map((user) => user.userId),
+      });
+
+      if (response.status === 200) {
+        toast.success("New users added successfully to the group.");
+        setMember((prevMembers) => [...prevMembers, ...newUsers]);
+      }
     } catch (error) {
-      toast.error("Error creating group! Please check your input and try again.");
+      toast.error("Error adding users to the group! Please try again.");
+    }
+  };
+
+  const handleRemoveUser = async (e: FormEvent, userId: string) => {
+    e.preventDefault();
+    try {
+      const response = await removeUser(groupId, userId);
+      if (response.status === 200) {
+        toast.success("User removed from the group successfully.");
+        setMember((prevMembers) => prevMembers.filter((member) => member.userId !== userId));
+      }
+    } catch (error) {
+      toast.error("Only admin can remove users.");
+      console.error((error as Error).message);
     }
   };
 
@@ -87,47 +105,49 @@ const GroupData: React.FC<UserDataProps> = ({ groupId, selectedUsers }) => {
       className="container max-vh-50"
       style={{ height: "76vh", color: "#ff803d" }}
     >
-      {name || members.length > 0 ? (
+      {name || member.length > 0 ? (
         <>
-          <h1 className="mt-2 text-white">{name}</h1>
-          <div>
-            <div className="d-flex justify-content-between">
-              <h1>
-                <span className="text-white">GroupName:</span> {name}
-              </h1>
-              {isAdmin ? (
-                <button
+          <Form onSubmit={handleAddUsers}>
+            <h1 className="mt-2 text-white">{name}</h1>
+            <div>
+              <div className="d-flex justify-content-between">
+                <h1>
+                  <span className="text-white">GroupName:</span> {name}
+                </h1>
+                <Button
                   className="bg-white rounded-lg border-0 my-2 px-4 py-2"
                   style={{ fontSize: "1rem", borderRadius: "20px", color: "#ff803e" }}
-                  // onClick={toggleGroup}
+                  type="submit"
                 >
-                  Add User
-                </button>
-              ) : null}
-            </div>
-            <h3>
-              <span className="text-white">Admin:</span> {admin}
-            </h3>
-            <h3 className="text-white">Members:</h3>
-            <ul className="list-unstyled">
-              {members?.map((m) => (
-                <div className="d-flex">
-                  <li
-                    key={id}
-                    className="border rounded shadow-sm mb-2 p-2 text-center text-white"
-                    style={{ backgroundColor: "#ff803e", cursor: "pointer", width: "10%" }}
+                  Save
+                </Button>
+              </div>
+              <h3>
+                <span className="text-white">Admin:</span> {admin}
+              </h3>
+              <Form.Label className="text-white">Members:</Form.Label>
+              <ul className="list-unstyled">
+                {member?.map((m) => (
+                  <div
+                    className="d-flex"
+                    key={m.userId}
                   >
-                    <span>{m.userName}</span>
-                  </li>
-                  <AiFillDelete
-                    className="text-white mt-2"
-                    style={{ fontSize: "20px", marginLeft: "10px" }}
-                    // onClick={() => handleDeleteGroup(selectedGroup?.groupId)}
-                  />
-                </div>
-              ))}
-            </ul>
-          </div>
+                    <li
+                      className="border rounded shadow-sm mb-2 p-2 text-center text-white"
+                      style={{ backgroundColor: "#ff803e", cursor: "pointer", width: "10%" }}
+                    >
+                      <span>{m.userName}</span>
+                    </li>
+                    <AiFillDelete
+                      className="text-white mt-2"
+                      style={{ fontSize: "20px", marginLeft: "10px" }}
+                      onClick={(e) => (m._id ? handleRemoveUser(e, m._id) : console.error("User ID is undefined"))}
+                    />
+                  </div>
+                ))}
+              </ul>
+            </div>
+          </Form>
         </>
       ) : (
         <p>Nothing to show</p>

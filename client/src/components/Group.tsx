@@ -8,7 +8,7 @@ interface User {
   userId: string;
 }
 
-interface GroupProps {
+export interface GroupProps {
   selectedUsers: User[];
 }
 

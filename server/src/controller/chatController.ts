@@ -72,7 +72,6 @@ const messageHandler = async (req: Request, res: Response): Promise<Response> =>
 
     messages.forEach((message: any) => {
       if ((message.senderId.toString(), message.senderId.toString() === currentUserId.toString())) {
-        console.log(currentUserId, "currentUserId");
         message.sender = true;
       } else {
         message.sender = false;
@@ -139,6 +138,7 @@ const sendMessage = async (req: Request, res: Response): Promise<Response> => {
         groupId,
         message,
       });
+      console.log(groupId, "sending to group");
       newMessage = await groupMessage.save();
     } else {
       const userMessage = new Chat({

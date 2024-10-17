@@ -19,24 +19,20 @@ export const createGroup = async (groupData: { groupName: string; members: strin
   }
 };
 
-export const addUser = async (groupId: string, userId: string) => {
-  return await axios.post(
-    `${API_URL}/${groupId}/addUser`,
-    { userId },
-    {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-      withCredentials: true,
-    }
-  );
+export const addUser = async (groupData: { groupId: string; members: string[] }) => {
+  return await axios.post(`${API_URL}/addUser`, groupData, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    withCredentials: true,
+  });
 };
 
 export const removeUser = async (groupId: string, userId: string) => {
   return await axios.post(
-    `${API_URL}/${groupId}/removeUser`,
-    { userId },
+    `${API_URL}/removeUser`,
+    { groupId, userId },
     {
       headers: {
         Authorization: `Bearer ${token}`,

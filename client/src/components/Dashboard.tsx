@@ -80,7 +80,7 @@ const Dashboard: FC = () => {
 
   const handleUserClick = (user: { userName: string; userId: string }) => {
     setSelectedGroup(null);
-    if (isGroup) {
+    if (isGroup || groupsData) {
       setSelectedUsers((prev) => {
         if (prev.find((u) => u.userId === user.userId)) {
           return prev.filter((u) => u.userId !== user.userId);
@@ -130,7 +130,7 @@ const Dashboard: FC = () => {
 
       setMessages(response.data.result.messages);
     } catch (error) {
-      console.error("Error loading messages", error);
+      console.error("Error loading messages", (error as Error).message);
       toast.error("Failed to load messages.");
     }
   };
@@ -160,11 +160,10 @@ const Dashboard: FC = () => {
         senderId: currentUserId,
         message: newMessage,
         sender: true,
-        ...(selectedGroup ? { groupId: selectedGroup.groupId } : {}),
+        ...(selectedGroup ? { groupId: selectedGroup._id } : {}),
         ...(selectedUser ? { receiverId: selectedUser.userId } : {}),
       };
 
-      // Check if we are sending to a group or a user
       if (!selectedUser && !selectedGroup) {
         toast.error("Please select a user or a group to send the message.");
         return;
@@ -187,10 +186,10 @@ const Dashboard: FC = () => {
 
   const toggleGroup = () => {
     setIsGroup((prev) => !prev);
+    setGroupsData((prev) => !prev);
     setSelectedId(null);
     setSelectedUser(null);
     setSelectedGroup(null);
-    setGroupsData((prev) => !prev);
     setUsersData(false);
   };
 
@@ -217,7 +216,6 @@ const Dashboard: FC = () => {
     }
 
     try {
-      console.log(groupId);
       const response: AxiosResponse<{ message: string }> = await axios.delete(
         `http://localhost:8080/group/delete/${groupId}`,
         {
@@ -332,10 +330,10 @@ const Dashboard: FC = () => {
             <Group selectedUsers={selectedUsers} />
           ) : usersData && selectedUser ? (
             <UserData userId={selectedUser?.userId as string} />
-          ) : groupsData && selectedGroup ? (
+          ) : groupsData ? (
             <GroupData
-              groupId={selectedGroup?._id as string}
               selectedUsers={selectedUsers}
+              groupId={selectedGroup?._id as string}
             />
           ) : (
             <>
@@ -352,7 +350,7 @@ const Dashboard: FC = () => {
                   <AiFillDelete
                     className="text-white mt-3"
                     style={{ fontSize: "20px" }}
-                    onClick={() => handleDeleteGroup(selectedGroup?.groupId)}
+                    onClick={() => handleDeleteGroup(selectedGroup._id)}
                   />
                 ) : null}
               </div>
