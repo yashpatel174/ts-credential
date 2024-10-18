@@ -22,7 +22,11 @@ interface SendMessagePayload {
   groupId?: string;
   sender: boolean;
 }
-
+interface User {
+  userName: string;
+  userId: string;
+  _id?: string;
+}
 interface Grouper {
   _id: string;
   groupName: string;
@@ -45,7 +49,9 @@ const Dashboard: FC = () => {
   const [usersData, setUsersData] = useState<boolean>(false);
   const [groupsData, setGroupsData] = useState<boolean>(false);
   const [msgIcon, setMsgIcon] = useState<boolean>(false);
-
+  const [name, setName] = useState<string | undefined>();
+  const [member, setMember] = useState<User[]>([]);
+  const [admin, setAdmin] = useState<string>("");
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const selectedName = selectedUser?.userName ?? selectedGroup?.groupName ?? "No user or group selected";
 
@@ -88,11 +94,26 @@ const Dashboard: FC = () => {
           return [...prev, user];
         }
       });
+      setMember((prev) => {
+        console.log("prev", prev);
+        const alreadyUser = prev.filter((item) => item._id === user.userId);
+
+        if (alreadyUser?.length > 0) {
+          return prev;
+        } else {
+          const newUser = {
+            _id: user.userId,
+            ...user,
+          };
+          return [...prev, newUser];
+        }
+      });
     } else {
       setSelectedUser(user);
       loadChatMessages(user.userId, "");
     }
   };
+  console.log("member", member);
 
   const handleGroupClick = (group: any) => {
     setSelectedUser(null);
@@ -199,12 +220,37 @@ const Dashboard: FC = () => {
 
   const toggleData = (e: MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
+    console.log("selectedUser", selectedUser);
+
     if (selectedUser) {
       setUsersData((prev) => !prev);
       setGroupsData(false);
     } else if (selectedGroup) {
       setGroupsData((prev) => !prev);
-      setUsersData(false);
+      setUsersData(true);
+
+      fetchData(selectedGroup._id);
+    }
+  };
+
+  const fetchData = async (groupId: string) => {
+    try {
+      const token = sessionStorage.getItem("token");
+      if (!token) {
+        toast.error("Token not provided");
+        return;
+      }
+
+      const response = await axios.get(`http://localhost:8080/chat/group/${groupId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      const result = response.data.result.user;
+      setName(result?.groupName);
+      setMember(result?.members);
+      setAdmin(result?.admin?.userName);
+    } catch (error) {
+      console.log((error as Error).message);
     }
   };
 
@@ -332,7 +378,12 @@ const Dashboard: FC = () => {
             <UserData userId={selectedUser?.userId as string} />
           ) : groupsData ? (
             <GroupData
-              selectedUsers={selectedUsers}
+              selectedUsers={selectedUsers as any}
+              name={name as string}
+              member={member as any}
+              admin={admin}
+              setMember={setMember as any}
+              users={users as any}
               groupId={selectedGroup?._id as string}
             />
           ) : (
@@ -359,7 +410,7 @@ const Dashboard: FC = () => {
                 style={{ height: "50vh" }}
                 ref={chatContainerRef}
               >
-                {messages.map((msg: any, idx) => {
+                {messages.map((msg, idx) => {
                   if (!msg || !msg.senderId) {
                     console.log(msg);
 
@@ -382,7 +433,7 @@ const Dashboard: FC = () => {
                   return (
                     <div
                       key={idx}
-                      className={`mb-2 d-flex ${msg.sender ? "justify-content-end" : "justify-content-start"}`}
+                      className={`mb-2 d-flex ${msg.senderId ? "justify-content-end" : "justify-content-start"}`}
                     >
                       <div
                         className={`p-2 rounded ${
@@ -393,7 +444,7 @@ const Dashboard: FC = () => {
                       >
                         <p className="mb-0">{msg.message}</p>
                       </div>
-                      {msgIcon && msg.sender ? (
+                      {msgIcon && msg.senderId ? (
                         <AiFillDelete
                           className="text-white mt-2 "
                           style={{ fontSize: "20px", marginLeft: "5px" }}

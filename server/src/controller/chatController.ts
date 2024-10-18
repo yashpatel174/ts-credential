@@ -6,6 +6,7 @@ import app, { Request, Response } from "express";
 import { Chat } from "../model/chatModel.js";
 import { required, response } from "../utils/utils.js";
 import { Types } from "mongoose";
+import { message as msg } from "../utils/messages.js";
 
 interface GroupQuery {
   senderId?: string;
@@ -27,30 +28,46 @@ const server = http.createServer(app);
 
 const io = new Server(server, {
   cors: {
-    origin: "*",
+    origin: "http://localhost:3000",
+    methods: ["GET", "POST"],
   },
 });
 
 io.on("connection", (socket) => {
-  console.log("New client connected:", socket.id);
+  console.log(`User connected: ${socket.id}`);
 
-  socket.on("joinRoom", ({ userId, targetUserId }) => {
-    const room = `${userId}-${targetUserId}`;
-    socket.join(room);
-    socket.emit("roomJoined", { room, message: "You have joined the room" });
+  // Handle private room join for 1-1 chat
+  socket.on("join_private_room", (roomId) => {
+    socket.join(roomId);
+    console.log(`User with ID: ${socket.id} joined private room: ${roomId}`);
   });
 
-  socket.on("sendMessage", ({ room, message }) => {
-    io.to(room).emit("receiveMessage", message);
+  // Handle sending a private message in 1-1 chat
+  socket.on("private_message", (data) => {
+    const { roomId, message } = data;
+    io.to(roomId).emit("receive_private_message", message);
   });
 
+  // Handle joining a group chat
+  socket.on("join_group", (groupName) => {
+    socket.join(groupName);
+    console.log(`User with ID: ${socket.id} joined group: ${groupName}`);
+  });
+
+  // Handle sending message in a group chat
+  socket.on("group_message", (data) => {
+    const { groupName, message } = data;
+    io.to(groupName).emit("receive_group_message", message);
+  });
+
+  // Handle user disconnect
   socket.on("disconnect", () => {
-    console.log("Client disconnected!", socket.id);
+    console.log(`User disconnected: ${socket.id}`);
   });
 });
 
-server.listen(5000, () => {
-  console.log("Server is running on port 5000");
+server.listen(4000, () => {
+  console.log("Server is running on port 4000");
 });
 
 const messageHandler = async (req: Request, res: Response): Promise<Response> => {
@@ -65,9 +82,10 @@ const messageHandler = async (req: Request, res: Response): Promise<Response> =>
         ],
       }).sort({ timeStampo: 1 });
     } else if (type === "group") {
-      messages = await Chat.find({ senderId: currentUserId, groupId: selectedId });
+      messages = await Chat.find({ groupId: selectedId }).sort({ timeStamp: 1 });
+      console.log(messages, "messages");
     } else {
-      return response(res, "Message not found", 404);
+      return response(res, msg.no_msg, 404);
     }
 
     messages.forEach((message: any) => {
@@ -77,9 +95,9 @@ const messageHandler = async (req: Request, res: Response): Promise<Response> =>
         message.sender = false;
       }
     });
-    return response(res, "Messages received successfully!", 200, { messages });
+    return response(res, msg.message_received, 200, { messages });
   } catch (error) {
-    return response(res, "Error while fetching data", 500, (error as Error).message);
+    return response(res, msg.data_error, 500, (error as Error).message);
   }
 };
 
@@ -90,16 +108,16 @@ const details = async (req: Request, res: Response): Promise<Response> => {
     let user;
     if (type === "user") {
       user = await userSchema.findById(_id).populate("groups");
-      if (!user) response(res, "User not found", 404);
+      if (!user) response(res, msg.no_user, 404);
     } else if (type === "group") {
       user = await groupSchema.findById(_id).populate("admin members");
     } else {
-      response(res, "No data found", 404);
+      response(res, msg.no_data, 404);
     }
 
-    return response(res, "Data received successfully", 200, { user });
+    return response(res, msg.data_received, 200, { user });
   } catch (error) {
-    return response(res, "Error while getting data", 500, (error as Error).message);
+    return response(res, msg.data_error, 500, (error as Error).message);
   }
 };
 
@@ -111,15 +129,24 @@ const deleteMessage = async (req: CustomRequest<GroupQuery>, res: Response): Pro
     const userId = req.user._id;
 
     const message = await Chat.findOne({ _id: messageId, senderId: userId });
-    if (!message) return response(res, "Message not found", 404);
-
-    console.log(message, "message");
+    if (!message) return response(res, msg.no_msg, 404);
 
     await Chat.findOneAndDelete({ _id: message._id });
 
-    return response(res, "Message deleted successfully!", 200);
+    const groupId = message.groupId ? message.groupId.toString() : undefined;
+    const messageSenderId = message.senderId.toString();
+    const messageReceiverId = message.receiverId.toString();
+
+    if (groupId) {
+      io.to(groupId).emit("message_deleted", { messageId });
+    } else {
+      io.to(messageSenderId).emit("message_deleted", { messageId });
+      io.to(messageReceiverId).emit("message_deleted", { messageId });
+    }
+
+    return response(res, msg.del_msg, 200);
   } catch (error) {
-    return response(res, "Error while deleting message", 500, (error as Error).message);
+    return response(res, msg.msg_del_err, 500, (error as Error).message);
   }
 };
 
@@ -131,15 +158,15 @@ const sendMessage = async (req: Request, res: Response): Promise<Response> => {
 
     if (groupId) {
       const group = await groupSchema.findById(groupId);
-      if (!group) return response(res, "Group not found!", 404);
+      if (!group) return response(res, msg.no_group, 404);
 
       const groupMessage = new Chat({
         senderId,
         groupId,
         message,
       });
-      console.log(groupId, "sending to group");
       newMessage = await groupMessage.save();
+      io.to(groupId).emit("group_message", newMessage);
     } else {
       const userMessage = new Chat({
         senderId,
@@ -147,14 +174,12 @@ const sendMessage = async (req: Request, res: Response): Promise<Response> => {
         message,
       });
       newMessage = await userMessage.save();
+      io.to(senderId).emit("private_message", newMessage);
+      io.to(receiverId).emit("private_message", newMessage);
     }
     return response(res, "", 201, newMessage);
   } catch (error) {
-    return res.status(500).send({
-      success: false,
-      message: "Error while sending message!",
-      error: (error as Error).message,
-    });
+    return response(res, msg.err_send_msg, 500, (error as Error).message);
   }
 };
 

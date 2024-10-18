@@ -42,7 +42,7 @@ const Group: FC<GroupProps> = ({ selectedUsers }) => {
         setGroupName("");
       }
     } catch (error) {
-      toast.error("Error creating group! Please check your input and try again.");
+      console.log((error as Error).message);
     }
   };
 

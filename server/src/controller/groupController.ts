@@ -2,13 +2,8 @@ import { Request, Response } from "express";
 import { Types } from "mongoose";
 import userModel, { IUsers } from "../model/userModel.js";
 import groupSchema, { IGroups } from "../model/groupModel.js";
-import { required, response } from "../utils/utils.js";
+import { response } from "../utils/utils.js";
 import { message } from "../utils/messages.js";
-import { ParamsDictionary } from "express-serve-static-core";
-import { CustomRequest } from "./userController.js";
-interface GroupParams extends ParamsDictionary {
-  groupId: string;
-}
 
 interface GroupQuery {
   groupId?: string;
@@ -43,7 +38,7 @@ const userList = async (req: Request<{}, {}, {}, GroupQuery>, res: Response): Pr
     if (groupId) {
       const group = await groupSchema.findById(groupId).select("members");
       if (!group) {
-        return res.status(404).json({ message: "Group not found." });
+        return res.status(404).json({ message: message.no_group });
       }
 
       const existingMembers = group.members;
@@ -55,21 +50,19 @@ const userList = async (req: Request<{}, {}, {}, GroupQuery>, res: Response): Pr
       users = await userModel.find({ _id: { $ne: userId } });
     }
 
-    return response(res, "List of users received successfully!", 200, users);
+    return response(res, message.user_list, 200, users);
   } catch (error) {
-    return res.status(500).send({
-      error: (error as Error).message,
-    });
+    return response(res, "", 500, (error as Error).message);
   }
 };
 
 const groupData = async (req: Request, res: Response): Promise<Response> => {
   try {
     const users = await groupSchema.find({});
-    if (!users) return response(res, "User not found", 404);
-    return response(res, "User details fetched successfully!", 200, users);
+    if (!users) return response(res, message.no_user, 404);
+    return response(res, message.user_details_fetch, 200, users);
   } catch (error) {
-    return response(res, "Erorr while getting data!", 500, (error as Error).message);
+    return response(res, message.data_error, 500, (error as Error).message);
   }
 };
 
@@ -83,21 +76,21 @@ const createGroup = async (req: Request, res: Response): Promise<Response> => {
     }
 
     if (!members || members.length < 1) {
-      return res.status(400).json({ message: "At least 1 other member is required to create a group." });
+      return response(res, message.member_warn, 400);
     }
 
     const flattenedMembers = members.map((member) => new Types.ObjectId(member));
 
     const users = await userModel.find({ _id: { $in: flattenedMembers } });
     if (!users || users.length === 0) {
-      return res.status(404).json({ message: "Users not found" });
+      return response(res, message.no_user, 404);
     }
 
     const memberIds = users.map((user) => user._id);
 
     const existingGroup: IGroups | null = await groupSchema.findOne({ groupName });
     if (existingGroup) {
-      return res.status(400).json({ message: "This group already exists!" });
+      return response(res, message.already_group, 400);
     }
 
     if (!memberIds.includes(userId)) {
@@ -131,10 +124,9 @@ const createGroup = async (req: Request, res: Response): Promise<Response> => {
       })
     );
 
-    return res.status(201).json({ message: "Group created successfully!", group: newGroup });
+    return response(res, message.group_created, 201, newGroup);
   } catch (error) {
-    console.error((error as Error).message, "Error in group creation");
-    return res.status(500).json({ message: "Error creating group", error });
+    return response(res, message.err_grp_create, 500, (error as Error).message);
   }
 };
 
@@ -143,9 +135,9 @@ const groupDetails = async (req: GroupRole, res: Response): Promise<Response> =>
     const { _id } = req.params;
 
     const group = await groupSchema.findById(_id).populate("members");
-    if (!group) return response(res, "Erorr while getting group information!", 500);
+    if (!group) return response(res, message.err_grp_info, 500);
 
-    return response(res, "User data fetched successfully!", 200, group);
+    return response(res, message.user_data, 200, group);
   } catch (error) {
     console.log((error as Error).message);
     return res.status(500).send({
@@ -160,15 +152,15 @@ const addUser = async (req: Request, res: Response): Promise<Response> => {
     const adminId: Types.ObjectId = req.user?._id as Types.ObjectId;
 
     const group: IGroups | null = await groupSchema.findById(_id);
-    if (!group) return res.status(404).json({ message: "Group not found" });
+    if (!group) return response(res, message.no_group, 404);
 
     if (group.admin.toString() !== adminId.toString()) {
-      return res.status(403).json({ message: "Only the admin can add members" });
+      return response(res, message.admin_add, 403);
     }
 
     const users = await userModel.find({ _id: { $in: members } });
     if (users.length === 0) {
-      return res.status(404).json({ message: "No valid users found to add" });
+      return response(res, message.no_user_to_add, 404);
     }
 
     const newMemberIds = users
@@ -176,7 +168,7 @@ const addUser = async (req: Request, res: Response): Promise<Response> => {
       .map((user) => user._id as Types.ObjectId);
 
     if (newMemberIds.length === 0) {
-      return res.status(400).json({ message: "All users are already members of the group" });
+      return response(res, message.already_member, 400);
     }
 
     group.members = [...group.members, ...newMemberIds];
@@ -192,9 +184,9 @@ const addUser = async (req: Request, res: Response): Promise<Response> => {
       })
     );
 
-    return res.status(200).json({ message: "Users added to the group", group });
+    return response(res, message.user_added, 200);
   } catch (error) {
-    return res.status(500).json({ message: "Error adding users to the group", error: (error as Error).message });
+    return response(res, message.err_add_user, 500, (error as Error).message);
   }
 };
 
@@ -204,57 +196,57 @@ const removeUser = async (req: Request, res: Response): Promise<Response> => {
     const adminId: Types.ObjectId = req.user?._id as Types.ObjectId;
 
     const group = await groupSchema.findById({ _id: groupId });
-    if (!group) return response(res, "Group not found!", 404);
+    if (!group) return response(res, message.no_group, 404);
 
     if (!group.admin.equals(adminId)) {
-      return response(res, "Only the group admin can remove users!", 403);
+      return response(res, message.admin_remove, 403);
     }
 
     const user = await userModel.findById(userId);
-    if (!user) return response(res, "User not found", 404);
+    if (!user) return response(res, message.no_user, 404);
 
     group.members = group.members.filter((memberId) => memberId.toString() !== userId);
-    user.groups = user.groups.filter((groupId) => groupId != group._id);
+    user.groups = user.groups.filter((groupId) => groupId.toString() != group._id);
 
-    await group.save();
-    await user.save();
+    if (group.members.length === 0 || group.members.length < 1) {
+      await groupSchema.findOneAndDelete({ _id: group._id });
+      await userModel.findOneAndUpdate({ groups: groupId }, { $pull: { groups: groupId } }, { new: true });
 
-    return response(res, "User removed from the group", 200);
+      return response(res, message.member_removed, 200);
+    } else {
+      await group.save();
+      await user.save();
+      return response(res, message.user_removed, 200);
+    }
   } catch (error) {
     console.log((error as Error).message);
-    return res.status(500).json({ message: "Error removing user from the group!", error: (error as Error).message });
+    return response(res, message.err_remove_user, 500, (error as Error).message);
   }
 };
 
 const selfRemove = async (req: Request, res: Response): Promise<Response> => {
   try {
     const { groupId } = req.params as GroupQuery;
-    console.log(groupId);
-    console.log(req.body);
 
     if (!groupId || !Types.ObjectId.isValid(groupId)) {
-      return res.status(400).json({ message: "Invalid or missing groupId" });
+      return response(res, message.invalid_groupId, 400);
     }
 
     const userId: Types.ObjectId = req.user?._id as Types.ObjectId;
 
     const group: IGroups | null = await groupSchema.findOne({ _id: groupId });
-    console.log(group);
-    if (!group) return response(res, "Group not found!", 404);
+    if (!group) return response(res, message.no_group, 404);
 
     const user: IUsers | null = await userModel.findById(userId);
-    if (!user) return response(res, "User not found", 404);
+    if (!user) return response(res, message.no_user, 404);
 
     group.members = group.members.filter((memberId) => memberId.toString() !== userId.toString());
     user.groups = user.groups.filter((groupDetails) => groupDetails.toString() !== groupId);
 
     if (group.members.length === 0 || group.members.length < 1) {
-      groupSchema.findOneAndDelete({ _id: groupId });
-    }
-
-    if (group.members.length === 0) {
       await groupSchema.findOneAndDelete({ _id: groupId });
-      return response(res, "You are removed from the group successfully!", 200);
+      await userModel.findOneAndUpdate({ groups: groupId }, { $pull: { groups: groupId } }, { new: true });
+      return response(res, message.removed_member, 200);
     } else {
       await group.save();
       await user.save();
@@ -262,7 +254,7 @@ const selfRemove = async (req: Request, res: Response): Promise<Response> => {
     }
   } catch (error) {
     console.log((error as Error).message);
-    return response(res, "Error while deleting group", 500, (error as Error).message);
+    return response(res, message.delete_err, 500, (error as Error).message);
   }
 };
 
@@ -272,22 +264,22 @@ const deleteGroup = async (req: DeleteGroupRequest, res: Response): Promise<Resp
     const adminId: Types.ObjectId = req.user?._id as Types.ObjectId;
 
     const group: IGroups | null = await groupSchema.findById(groupId);
-    if (!group) return response(res, "Group not found!", 404);
+    if (!group) return response(res, message.no_group, 404);
 
     if (group.admin.toString() !== adminId.toString()) {
-      return res.status(403).json({ message: "Only the group admin can delete the group" });
+      return response(res, message.admin_delete, 403);
     }
 
-    if (group.members.length > 0) return response(res, "Group can't be deleted as it contains members");
+    if (group.members.length > 0) return response(res, message.grp_member);
 
     const deletedGroup = await groupSchema.deleteOne({ _id: groupId });
-    if (!deletedGroup) return response(res, "Group is not deleted!");
+    if (!deletedGroup) return response(res, message.no_grp_del);
 
     await userModel.updateMany({ groups: groupId }, { $pull: { groups: groupId } });
 
-    return response(res, "Group deleted successfully!", 200);
+    return response(res, message.grp_del, 200);
   } catch (error) {
-    return res.status(500).json({ message: "Error while deleting group!", error: (error as Error).message });
+    return response(res, message.err_del_grp, 500, (error as Error).message);
   }
 };
 

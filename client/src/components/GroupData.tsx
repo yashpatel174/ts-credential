@@ -6,64 +6,30 @@ import { Button, Form } from "react-bootstrap";
 import { addUser, removeUser } from "../api";
 
 interface User {
+  _id: string;
   userName: string;
-  userId: string;
-  _id?: string;
+  role: string;
 }
 
 interface UserDataProps {
   groupId: string;
   selectedUsers: User[];
-}
-
-interface Group {
-  _id: string;
-  groupName: string;
-  members: string[];
+  name: string;
+  member: User[];
   admin: string;
-  userName: string;
+  users: User[];
+  setMember: string;
 }
 
-const GroupData: React.FC<UserDataProps> = ({ groupId, selectedUsers }) => {
-  const [name, setName] = useState<string | undefined>();
-  const [member, setMember] = useState<User[]>([]);
-  const [admin, setAdmin] = useState<string>("");
-  const [users, setUsers] = useState<User[]>([]);
-
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const token = sessionStorage.getItem("token");
-        if (!token) {
-          toast.error("Token not provided");
-          return;
-        }
-
-        const response = await axios.get(`http://localhost:8080/chat/group/${groupId}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-
-        const result = response.data.result.user;
-        setName(result?.groupName);
-        setMember(result?.members);
-        setAdmin(result?.admin?.userName);
-        setUsers(selectedUsers);
-      } catch (error) {
-        console.log((error as Error).message);
-      }
-    };
-
-    if (groupId) {
-      fetchData();
-    }
-  }, [groupId, selectedUsers]);
+const GroupData: React.FC<UserDataProps> = (props) => {
+  const { groupId, users, name, member, admin } = props;
+  console.log(groupId, "groupId");
 
   const handleAddUsers = async (e: FormEvent) => {
     e.preventDefault();
 
-    // Filter out already existing members
-    const newUsers = selectedUsers.filter(
-      (selectedUser) => !member.some((existingMember) => existingMember.userId === selectedUser.userId)
+    const newUsers = users.filter(
+      (user: any) => !member.some((existingMember: any) => existingMember.userId === user.userId)
     );
 
     if (newUsers.length === 0) {
@@ -74,12 +40,11 @@ const GroupData: React.FC<UserDataProps> = ({ groupId, selectedUsers }) => {
     try {
       const response = await addUser({
         groupId,
-        members: newUsers.map((user) => user.userId),
+        members: newUsers.map((user: any) => user.userId),
       });
 
       if (response.status === 200) {
         toast.success("New users added successfully to the group.");
-        setMember((prevMembers) => [...prevMembers, ...newUsers]);
       }
     } catch (error) {
       toast.error("Error adding users to the group! Please try again.");
@@ -92,7 +57,6 @@ const GroupData: React.FC<UserDataProps> = ({ groupId, selectedUsers }) => {
       const response = await removeUser(groupId, userId);
       if (response.status === 200) {
         toast.success("User removed from the group successfully.");
-        setMember((prevMembers) => prevMembers.filter((member) => member.userId !== userId));
       }
     } catch (error) {
       toast.error("Only admin can remove users.");
@@ -127,7 +91,7 @@ const GroupData: React.FC<UserDataProps> = ({ groupId, selectedUsers }) => {
               </h3>
               <Form.Label className="text-white">Members:</Form.Label>
               <ul className="list-unstyled">
-                {member?.map((m) => (
+                {member?.map((m: any) => (
                   <div
                     className="d-flex"
                     key={m.userId}

@@ -55,7 +55,7 @@ const dashboard = async (req, res) => {
         }
         const users = await userSchema.find({ _id: { $ne: user._id } });
         if (!users)
-            return response(res, "Users not found!", 404);
+            return response(res, message.no_user, 404);
         const userList = users.map((u) => ({ userName: u.userName, userId: u._id }));
         const groupList = await groupSchema.find({
             members: { $in: [user._id] },
@@ -79,20 +79,12 @@ const userDetails = async (req, res) => {
         const { _id } = req.params;
         const user = await userSchema.findById(_id).populate("groups");
         if (!user) {
-            return res.status(404).json({
-                error: "User not found",
-            });
+            return response(res, message.no_user, 404);
         }
-        return res.status(200).json({
-            message: "User data fetched successfully!",
-            result: user,
-        });
+        return response(res, message.user_data, 200, user);
     }
     catch (error) {
-        console.log(error.message);
-        return res.status(500).send({
-            error: error.message,
-        });
+        return response(res, message.no_user_data, 500, error.message);
     }
 };
 const logout = async (req, res) => {
@@ -109,10 +101,7 @@ const logout = async (req, res) => {
         return response(res, message.logout);
     }
     catch (error) {
-        return res.status(500).send({
-            message: message.logout_fail,
-            error: error.message,
-        });
+        return response(res, message.logout_fail, 500, error.message);
     }
 };
 let transporter = nodemailer.createTransport({
@@ -149,10 +138,7 @@ const requestPasswordReset = async (req, res) => {
         return response(res, message.link_sent, 200, token);
     }
     catch (error) {
-        return res.status(500).send({
-            messaeg: message.mail_error,
-            error: error.message,
-        });
+        return response(res, message.mail_error, 500, error.message);
     }
 };
 const resetPassword = async (req, res) => {

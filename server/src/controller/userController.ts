@@ -1,5 +1,5 @@
-import userSchema, { IUsers } from "../model/userModel.js";
-import groupSchema, { IGroups } from "../model/groupModel.js";
+import userSchema from "../model/userModel.js";
+import groupSchema from "../model/groupModel.js";
 import { Types } from "mongoose";
 import { Request, Response } from "express";
 import bcrypt from "bcrypt";
@@ -91,7 +91,7 @@ const dashboard = async (req: CustomRequest, res: Response): Promise<Response> =
     }
 
     const users = await userSchema.find({ _id: { $ne: user._id } });
-    if (!users) return response(res, "Users not found!", 404);
+    if (!users) return response(res, message.no_user, 404);
 
     const userList = users.map((u) => ({ userName: u.userName, userId: u._id }));
     const groupList = await groupSchema.find({
@@ -120,20 +120,12 @@ const userDetails = async (req: Request, res: Response): Promise<Response> => {
 
     const user = await userSchema.findById(_id).populate("groups");
     if (!user) {
-      return res.status(404).json({
-        error: "User not found",
-      });
+      return response(res, message.no_user, 404);
     }
 
-    return res.status(200).json({
-      message: "User data fetched successfully!",
-      result: user,
-    });
+    return response(res, message.user_data, 200, user);
   } catch (error) {
-    console.log((error as Error).message);
-    return res.status(500).send({
-      error: (error as Error).message,
-    });
+    return response(res, message.no_user_data, 500, (error as Error).message);
   }
 };
 
@@ -152,10 +144,7 @@ const logout = async (req: Request, res: Response): Promise<Response> => {
 
     return response(res, message.logout);
   } catch (error) {
-    return res.status(500).send({
-      message: message.logout_fail,
-      error: (error as Error).message,
-    });
+    return response(res, message.logout_fail, 500, (error as Error).message);
   }
 };
 
@@ -199,10 +188,7 @@ const requestPasswordReset = async (req: Request, res: Response): Promise<Respon
     });
     return response(res, message.link_sent, 200, token);
   } catch (error) {
-    return res.status(500).send({
-      messaeg: message.mail_error,
-      error: (error as Error).message,
-    });
+    return response(res, message.mail_error, 500, (error as Error).message);
   }
 };
 
